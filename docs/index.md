@@ -11,6 +11,6 @@ An AI-powered documentation agent that monitors Slack for product releases and a
 
 ## Documentation
 
-- [Architecture](architecture.md) — System design, components, and data flow
-- [Setup Guide](setup.md) — Installation, configuration, and credentials
-- [Workflow Guide](workflow.md) — 9-step process and human checkpoints
+- [Architecture](architecture) — System design, components, and data flow
+- [Setup Guide](setup) — Installation, configuration, and credentials
+- [Workflow Guide](workflow) — 9-step process and human checkpoints
