@@ -8,3 +8,8 @@
 - Updated: 0 articles
 - Created: 1 articles
 - Links: https://support.pergamon-labs.com/hc/en-us/articles/15659314700175-Release-Notes-Version-3-8-0
+
+## v3.7.1 — 2026-04-01
+- Updated: 0 articles
+- Created: 1 articles
+- Links: https://support.pergamon-labs.com/hc/en-us/articles/15667859064207-Release-Notes-Version-3-7-1

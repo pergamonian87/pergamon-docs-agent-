@@ -9,7 +9,7 @@ The Pergamon Docs Agent follows a 9-step interactive workflow. It does not act a
 ## The 9-Step Workflow
 
 ### Step 1 — Fetch Release Notes
-**What happens:** Agent reads the latest release thread from Slack #release channel, or accepts a manual paste if Slack is not configured.
+**What happens:** Agent reads the latest release thread from Slack #release channel, or accepts a manual paste if Slack is not configured. After fetching, the agent will prompt you interactively using the terminal — it will not stop automatically.
 
 **Input:** Jakub's free-form release post (any format)
 
@@ -17,6 +17,8 @@ The Pergamon Docs Agent follows a 9-step interactive workflow. It does not act a
 - New features
 - Improvements
 - Bug fixes
+
+**Note:** The `pergamon_docs_agent` bot must be a member of the `#release` channel. If not, invite it with `/invite @pergamon_docs_agent` in Slack.
 
 ---
 

@@ -81,7 +81,7 @@ SLACK_RELEASE_CHANNEL_ID=C089EBK20G0
    - `channels:read`
 6. Click **Install to Workspace**
 7. Copy the **Bot OAuth Token** (`xoxb-...`) into `.env`
-8. Invite the bot to #release channel: `/invite @Pergamon Docs Agent`
+8. Invite the bot to #release channel: `/invite @pergamon_docs_agent`
 
 ---
 

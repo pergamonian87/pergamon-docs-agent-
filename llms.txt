@@ -3,6 +3,7 @@
 Pergamon is a structured content management platform for creating product documentation that meets EU market requirements. It enables teams to manage content artifacts, publication workflows, and multi-language documentation at scale.
 
 ## Documentation
+- [Release Notes - Version 3.7.1](https://support.pergamon-labs.com/hc/en-us/articles/15667859064207)
 - [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15659314700175-Release-Notes-Version-3-8-0)
 - [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15645895685007-Release-Notes-Version-3-8-0)
 - Help Centre: https://support.pergamon-labs.com/hc/en-us
