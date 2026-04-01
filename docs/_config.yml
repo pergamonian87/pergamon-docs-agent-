@@ -1,0 +1,6 @@
+theme: jekyll-theme-cayman
+title: Pergamon Docs Agent
+description: AI-powered documentation agent for Zendesk help center management
+url: "https://pergamonian87.github.io"
+baseurl: "/pergamon-docs-agent-"
+show_downloads: false
