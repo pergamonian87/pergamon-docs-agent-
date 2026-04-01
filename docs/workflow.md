@@ -3,6 +3,8 @@ layout: default
 title: Workflow Guide
 ---
 
+<a href="{{ site.baseurl }}/" style="font-size:14px;">← Pergamon Docs Agent</a>
+
 # Pergamon Docs Agent — Workflow Guide
 
 ## Overview

@@ -3,6 +3,8 @@ layout: default
 title: Architecture
 ---
 
+<a href="{{ site.baseurl }}/" style="font-size:14px;">← Pergamon Docs Agent</a>
+
 # Pergamon Docs Agent — Architecture
 
 ## Overview

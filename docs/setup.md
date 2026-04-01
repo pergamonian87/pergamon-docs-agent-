@@ -3,6 +3,8 @@ layout: default
 title: Setup Guide
 ---
 
+<a href="{{ site.baseurl }}/" style="font-size:14px;">← Pergamon Docs Agent</a>
+
 # Pergamon Docs Agent — Setup Guide
 
 ## Prerequisites
