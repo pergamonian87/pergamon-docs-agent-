@@ -15,52 +15,65 @@ It is built as a Python application running locally on a Mac, using the OpenAI G
 
 ## System Diagram
 
-```mermaid
+<div class="mermaid">
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#eef3f8", "primaryBorderColor": "#1f73b7", "primaryTextColor": "#1f2933", "lineColor": "#4b5563", "secondaryColor": "#f0f4ff", "tertiaryColor": "#e8f5e9"}, "flowchart": {"curve": "basis"}} }%%
 flowchart TD
-    SLACK["Slack #release channel\nJakub posts release notes"]
-    MANUAL["Manual paste\n(fallback when Slack not configured)"]
+    classDef input     fill:#dbeafe,stroke:#1d4ed8,color:#1e3a5f,rx:8
+    classDef agent     fill:#1f73b7,stroke:#155e8e,color:#ffffff,font-weight:bold,rx:8
+    classDef tool      fill:#ede9fe,stroke:#7c3aed,color:#3b1e6e,rx:8
+    classDef human     fill:#fef3c7,stroke:#d97706,color:#78350f,rx:8
+    classDef memory    fill:#fce7f3,stroke:#be185d,color:#831843,rx:8
+    classDef output    fill:#d1fae5,stroke:#059669,color:#064e3b,rx:8
 
-    subgraph AGENT["Pergamon Docs Agent (main.py)"]
-        LOOP["Agent Loop\nGPT-4o orchestrates\nthe full workflow"]
-        CHECKPOINTS["5 Human Checkpoints\nUser approves at each stage"]
+    SLACK["📢 Slack\n#release"]:::input
+    MANUAL["📋 Manual paste\nfallback"]:::input
+
+    subgraph AGENT["  🤖  Pergamon Docs Agent — main.py  "]
+        LOOP["GPT-4o\nAgent Loop"]:::agent
     end
 
-    subgraph TOOLS["Tools"]
-        ZD_READ["Zendesk API (Read)\nFetch articles + sections"]
-        ZD_WRITE["Zendesk API (Write)\nUpdate / Create / Publish"]
-        SLACK_TOOL["Slack API\nRead #release thread"]
-        SYN["Synthesia API\nCreate release video"]
+    subgraph MEM["  💾  Persistent Memory  "]
+        CLAUDE_MD["CLAUDE.md\nStyle · Terminology · AEO"]:::memory
+        CHANGELOG["changelog.md\nAudit trail"]:::memory
+        LLMS["llms.txt\nAI crawler index"]:::memory
     end
 
-    subgraph MEMORY["Persistent Memory"]
-        CLAUDE_MD["CLAUDE.md\nProduct knowledge, style rules,\nterminology, AEO rules,\nrelease notes template"]
-        ENV[".env\nAPI credentials"]
-        CHANGELOG["changelog.md\nAudit trail"]
-        LLMS["llms.txt\nAI crawler index"]
+    subgraph TOOLS["  🔧  Tools  "]
+        SLACK_TOOL["Slack API\nfetch release thread"]:::tool
+        ZD_READ["Zendesk Read\nlist · get · sections"]:::tool
+        ZD_WRITE["Zendesk Write\nupdate · create · publish"]:::tool
+        SYN["Synthesia API\ncreate release video"]:::tool
     end
 
-    subgraph OUTPUT["Output"]
-        UPDATED["Updated articles\n(live on Zendesk)"]
-        NEW["New articles\n(live on Zendesk)"]
-        RELEASE["Release notes article\n(live on Zendesk)"]
-        VIDEO["Release highlights video\n(Synthesia)"]
-        REPORT["Post-publish report\nin terminal"]
+    subgraph CP["  🛑  Human Checkpoints  "]
+        direction LR
+        CP1["① Feature list"]:::human
+        CP2["② Feature Q&A"]:::human
+        CP3["③ Article discovery"]:::human
+        CP4["④ Diff review"]:::human
+        CP5["⑤ Publish approval"]:::human
+    end
+
+    subgraph OUT["  ✅  Output  "]
+        ZD_OUT["Zendesk Help Center\nLive articles"]:::output
+        VIDEO["Synthesia\nRelease video"]:::output
+        REPORT["Terminal\nPost-publish report"]:::output
     end
 
     SLACK --> SLACK_TOOL --> LOOP
     MANUAL --> LOOP
-    CLAUDE_MD --> LOOP
-    ENV --> LOOP
-    LOOP <--> CHECKPOINTS
-    LOOP --> ZD_READ --> LOOP
-    LOOP --> ZD_WRITE --> UPDATED
-    ZD_WRITE --> NEW
-    ZD_WRITE --> RELEASE
+    CLAUDE_MD -->|loaded at startup| LOOP
+    LOOP --> ZD_READ -->|article content| LOOP
+    LOOP --> ZD_WRITE --> ZD_OUT
     LOOP --> SYN --> VIDEO
-    LOOP --> CHANGELOG
-    LOOP --> LLMS
+    LOOP <-->|interactive prompts| CP
+    LOOP -->|after publish| CHANGELOG
+    LOOP -->|after publish| LLMS
     LOOP --> REPORT
-```
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });</script>
 
 ---
 
