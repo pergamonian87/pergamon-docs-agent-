@@ -1,3 +1,8 @@
+---
+layout: default
+title: Workflow Guide
+---
+
 # Pergamon Docs Agent — Workflow Guide
 
 ## Overview

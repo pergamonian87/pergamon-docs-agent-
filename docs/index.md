@@ -1,3 +1,8 @@
+---
+layout: default
+title: Pergamon Docs Agent
+---
+
 # Pergamon Docs Agent
 
 An AI-powered documentation agent that monitors Slack for product releases and automatically updates Zendesk help articles.

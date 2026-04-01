@@ -1,3 +1,8 @@
+---
+layout: default
+title: Setup Guide
+---
+
 # Pergamon Docs Agent — Setup Guide
 
 ## Prerequisites

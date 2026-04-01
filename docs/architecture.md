@@ -1,3 +1,8 @@
+---
+layout: default
+title: Architecture
+---
+
 # Pergamon Docs Agent — Architecture
 
 ## Overview
