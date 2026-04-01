@@ -1,0 +1,6 @@
+anthropic
+python-dotenv
+requests
+rich
+beautifulsoup4
+html2text
