@@ -259,7 +259,8 @@ _TOOLS_RAW = [
         "description": (
             "Ask the user how they want to find impacted articles for this release. "
             "Always call this before any article scanning. "
-            "Returns the user's chosen method and any IDs or section preferences they provide."
+            "Returns the user's chosen method and any IDs or section preferences they provide. "
+            "If the user chooses 'all_new', skip discovery entirely and proceed straight to drafting new articles."
         ),
         "input_schema": {
             "type": "object",
@@ -502,8 +503,9 @@ def _execute_tool(name: str, inp: dict) -> str:
         console.print("[bold]1.[/bold] Scan all article titles — agent suggests a list for you to confirm")
         console.print("[bold]2.[/bold] Search by section — you pick which sections to look in")
         console.print("[bold]3.[/bold] Provide article IDs directly — you know exactly which ones")
+        console.print("[bold]4.[/bold] All new articles — skip discovery, go straight to drafting")
         console.print()
-        choice = Prompt.ask("[bold cyan]Choose[/bold cyan]", choices=["1", "2", "3"], default="1")
+        choice = Prompt.ask("[bold cyan]Choose[/bold cyan]", choices=["1", "2", "3", "4"], default="1")
 
         if choice == "1":
             return json.dumps({"method": "scan_titles"})
@@ -539,7 +541,7 @@ def _execute_tool(name: str, inp: dict) -> str:
                 "sections": resolved,
             })
 
-        else:
+        elif choice == "3":
             console.print("\n[dim]Fetching article list...[/dim]")
             articles_raw = list_zendesk_articles()
             articles = json.loads(articles_raw)
@@ -567,6 +569,10 @@ def _execute_tool(name: str, inp: dict) -> str:
                 "method": "direct_ids",
                 "articles": resolved,
             })
+
+        else:  # choice == "4"
+            console.print("[green]✓ Skipping discovery — all articles will be created as new[/green]")
+            return json.dumps({"method": "all_new"})
 
     # Human checkpoints
     elif name == "ask_user":
