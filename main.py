@@ -260,7 +260,8 @@ _TOOLS_RAW = [
             "Ask the user how they want to find impacted articles for this release. "
             "Always call this before any article scanning. "
             "Returns the user's chosen method and any IDs or section preferences they provide. "
-            "If the user chooses 'all_new', skip discovery entirely and proceed straight to drafting new articles."
+            "If the user chooses 'all_new', skip discovery entirely and proceed straight to drafting new articles. "
+            "The response will include available_sections — use these to suggest the most relevant section for each new article and confirm with the user via ask_user before creating."
         ),
         "input_schema": {
             "type": "object",
@@ -572,7 +573,20 @@ def _execute_tool(name: str, inp: dict) -> str:
 
         else:  # choice == "4"
             console.print("[green]✓ Skipping discovery — all articles will be created as new[/green]")
-            return json.dumps({"method": "all_new"})
+            console.print("\n[dim]Fetching sections so the agent can suggest the right placement...[/dim]")
+            sections_raw = get_sections()
+            sections = json.loads(sections_raw)
+            table = Table(border_style="dim")
+            table.add_column("ID", style="cyan")
+            table.add_column("Section name")
+            for s in sections:
+                table.add_row(str(s["id"]), s["name"])
+            console.print(table)
+            console.print("[dim]The agent will suggest a section for each new article — you can confirm or change it.[/dim]")
+            return json.dumps({
+                "method": "all_new",
+                "available_sections": sections,
+            })
 
     # Human checkpoints
     elif name == "ask_user":
