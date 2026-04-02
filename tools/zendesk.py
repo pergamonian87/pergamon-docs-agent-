@@ -46,6 +46,15 @@ def get_zendesk_article(article_id: int) -> str:
         f"{base}/api/v2/help_center/en-us/articles/{article_id}.json",
         auth=auth,
     )
+    if r.status_code == 404:
+        return json.dumps({
+            "error": "not_found",
+            "article_id": article_id,
+            "message": (
+                f"Article {article_id} not found. This ID may be a section ID, not an article ID. "
+                "Use get_sections to look up section IDs, or list_zendesk_articles to find valid article IDs."
+            ),
+        }, indent=2)
     r.raise_for_status()
     a = r.json()["article"]
     return json.dumps({
