@@ -258,6 +258,14 @@ Never remove existing screenshots or `<img>` tags from articles.
 
 (Add more as discovered)
 
+## Release Notes Reference Article
+
+When drafting a new release notes article, always fetch article `15563866700687` (Release Notes - Version 3.7.0) to copy the following sections verbatim:
+- **"Get the latest version"** section (H2)
+- **"Need help?"** footer block
+
+Use `get_zendesk_article` with ID `15563866700687` to retrieve it. Do NOT use the section ID `15005482487055` as an article ID — it is a section ID only.
+
 ---
 
 ## Changelog
