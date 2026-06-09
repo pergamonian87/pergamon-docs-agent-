@@ -3,12 +3,23 @@
 Pergamon is a structured content management platform for creating product documentation that meets EU market requirements. It enables teams to manage content artifacts, publication workflows, and multi-language documentation at scale.
 
 ## Documentation
+- [View and download QC AI assembly QC report](https://support.pergamon-labs.com/hc/en-us/articles/16413268283023-View-and-download-QC-AI-assembly-QC-report)
+- [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/16280163171215)
+- [Introduction to AI Assembly](https://support.pergamon-labs.com/hc/en-us/articles/16280137284879)
+- [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/16269900268175-Release-Notes-Version-3-8-0)
+- [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15674523212175-Release-Notes-Version-3-8-0)
+- [Publication Scheduler](https://support.pergamon-labs.com/hc/en-us/articles/15674543924495-Publication-Scheduler)
+- [Multi-user Collaborative Editing](https://support.pergamon-labs.com/hc/en-us/articles/15674530467087-Multi-user-Collaborative-Editing)
+- [Smart Content Suggestions](https://support.pergamon-labs.com/hc/en-us/articles/15674522407567-Smart-Content-Suggestions)
+- [Smart Content Suggestions](https://support.pergamon-labs.com/hc/en-us/articles/15673630417295)
+- [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15673645512975)
 - [Release Notes - Version 3.7.1](https://support.pergamon-labs.com/hc/en-us/articles/15667859064207)
 - [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15659314700175-Release-Notes-Version-3-8-0)
 - [Release Notes - Version 3.8.0](https://support.pergamon-labs.com/hc/en-us/articles/15645895685007-Release-Notes-Version-3-8-0)
 - Help Centre: https://support.pergamon-labs.com/hc/en-us
 
 ## Key Concepts
+- Smart Content Suggestions
 - Content Artifact: A reusable unit of structured content in Pergamon
 - ACA Workflow: Pergamon's authoring and content approval workflow
 - Knowledge Library: The central repository of content artifacts in Pergamon

@@ -4,3 +4,5 @@ requests
 rich
 beautifulsoup4
 html2text
+pypdf
+python-docx

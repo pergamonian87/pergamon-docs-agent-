@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import json
 import time
+import mimetypes
 import requests
 from pathlib import Path
 
@@ -236,6 +237,90 @@ def get_sections() -> str:
         for s in r.json().get("sections", [])
     ]
     return json.dumps(sections, indent=2)
+
+
+def get_zendesk_ticket(ticket_id: int) -> str:
+    """Fetch a Zendesk support ticket: subject, description, requester, tags, status, comments."""
+    base, auth = _auth()
+    r = requests.get(f"{base}/api/v2/tickets/{ticket_id}.json", auth=auth)
+    if r.status_code == 404:
+        return json.dumps({
+            "error": "not_found",
+            "ticket_id": ticket_id,
+            "message": f"Ticket {ticket_id} not found.",
+        }, indent=2)
+    r.raise_for_status()
+    t = r.json()["ticket"]
+
+    rc = requests.get(f"{base}/api/v2/tickets/{ticket_id}/comments.json", auth=auth)
+    rc.raise_for_status()
+    comments = [
+        {
+            "id": c["id"],
+            "body": c["body"],
+            "public": c["public"],
+            "created_at": c["created_at"],
+        }
+        for c in rc.json().get("comments", [])
+    ]
+
+    return json.dumps({
+        "id": t["id"],
+        "subject": t["subject"],
+        "description": t["description"],
+        "status": t["status"],
+        "priority": t.get("priority"),
+        "tags": t.get("tags", []),
+        "created_at": t["created_at"],
+        "updated_at": t["updated_at"],
+        "comments": comments,
+    }, indent=2)
+
+
+def update_zendesk_ticket(ticket_id: int, comment: str, status: str = "solved") -> str:
+    """Post an internal note on a ticket and update its status. Always internal — never public."""
+    base, auth = _auth()
+    payload = {
+        "ticket": {
+            "comment": {
+                "body": comment,
+                "public": False,
+            },
+            "status": status,
+        }
+    }
+    r = requests.put(f"{base}/api/v2/tickets/{ticket_id}.json", auth=auth, json=payload)
+    r.raise_for_status()
+    t = r.json()["ticket"]
+    return json.dumps({
+        "id": t["id"],
+        "status": t["status"],
+        "comment_posted": True,
+        "internal_note": True,
+    }, indent=2)
+
+
+def upload_article_image(article_id: int, image_path: str) -> str:
+    """Upload an image as an inline article attachment. Returns the CDN URL."""
+    base, auth = _auth()
+    p = Path(image_path.strip().replace("\\ ", " "))
+    if not p.exists():
+        return json.dumps({"error": "file_not_found", "path": str(p)}, indent=2)
+    mime = mimetypes.guess_type(str(p))[0] or "image/png"
+    with open(p, "rb") as f:
+        r = requests.post(
+            f"{base}/api/v2/help_center/articles/{article_id}/attachments",
+            auth=auth,
+            files={"file": (p.name, f, mime)},
+            data={"inline": "true"},
+        )
+    r.raise_for_status()
+    att = r.json().get("article_attachment", {})
+    return json.dumps({
+        "url": att.get("content_url", ""),
+        "filename": att.get("file_name", p.name),
+        "content_type": att.get("content_type", mime),
+    }, indent=2)
 
 
 def _save_local_draft(article_id: int, payload: dict) -> None:

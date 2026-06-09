@@ -41,55 +41,85 @@ Always use these exact terms. Never paraphrase or substitute.
 
 ## Style Guide Priority Order
 
-1. **Microsoft Writing Style Guide** — https://learn.microsoft.com/en-us/style-guide/welcome/
-2. **Google Developer Documentation Style Guide** — https://developers.google.com/style
-3. **Diataxis Framework** — https://diataxis.fr
-4. Pergamon-specific overrides in this file (highest priority)
+1. **Stripe Documentation Style** — primary reference for tone, structure, step writing, and callouts
+2. **Diataxis Framework** — https://diataxis.fr — for article type classification
+3. Pergamon-specific overrides in this file (highest priority)
 
 ---
 
-## Pergamon Writing Conventions
+## Writing Style — Stripe Docs Standard
 
-- Use **second person** ("you", "your") — never "the user" or "users"
-- Use **active voice** always
-- Use **sentence case** for headings (not Title Case)
-- Use **present tense** for describing UI states ("Click **Save**", not "Click on **Save**")
-- Bold all **UI element names** on first use per article
-- Steps use numbered lists. Sub-steps use lettered lists (a, b, c).
-- Each step starts with an action verb: "Click", "Select", "Enter", "Navigate"
-- End each feature description with a benefit sentence: "This [improves/enables/allows] you to [outcome]."
+Model all documentation on Stripe's documentation style. Key principles:
+
+### Tone and voice
+- Write directly to the reader: "you", "your" — never "the user" or "users"
+- Active voice always. Cut passive constructions.
+- Present tense for UI states and actions: "Click **Save**" not "Click on **Save**"
+- Be concise. Strip filler phrases: never write "Follow the steps below to…", "In order to…", "Please note that…"
+- Sentence case for all headings. Never Title Case.
+
+### Step writing rules — critical
+Every step must describe exactly one physical action. Apply these rules strictly:
+
+- **One action per step.** If a step contains "then" or "and", split it.
+- **Start every step with an imperative verb:** Click, Select, Enter, Navigate, Toggle, Open, Copy, Paste. Never start with "Find", "Locate", "Go to", or "Make sure".
+- **Bold every UI element name** exactly as it appears in the product: **Attributes**, **Origin**, **Assembly report**
+- **Use › for navigation paths** when describing menu sequences: Select **Attributes** › **Basic attributes**
+- **Combine orientation and action.** Never write a step that only orients ("Find the Origin field"). Merge it into the action step: "In the **Origin** field, click the download icon."
+- **No preamble before numbered steps.** One sentence of context is the maximum before the list begins.
+- Sub-steps use lettered lists (a, b, c) only when a step has genuinely parallel options — not for sequential actions.
+
+### What good looks like — example
+❌ Bad (current output):
+> 3. Select Basic attributes.
+> 4. Find the Origin field.
+> 5. To download the QC report, click on the download icon located to the right of the Origin field.
+
+✅ Stripe style:
+> 3. Select **Basic attributes**.
+> 4. In the **Origin** field, do one of the following:
+>    - To download the report, click the download icon on the right.
+>    - To view the report in the UI, click **Assembly report**.
+
+### Callouts — when to use each type
+- **Note** — supplementary information the reader might find useful but can skip
+- **Tip** — a shortcut, best practice, or efficiency hint
+- **Warning** — something that could cause data loss, unexpected behaviour, or extra work to undo
+- **Danger** — an irreversible or destructive action
+
+Use callouts sparingly. One per section maximum. Never use a callout for information that belongs in the main text.
 
 ---
 
 ## Zendesk HTML Callout Formats
 
-Use these exact HTML blocks for callouts:
+Use these exact HTML blocks. Style matches Stripe docs: clean background, subtle left border, no heavy box shadows.
 
-### Note (blue)
+### Note (blue — supplementary info)
 ```html
-<div style="background-color: #eef3f8; border-left: 4px solid #1f73b7; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-  <strong>Note:</strong> [content]
+<div style="background-color: #f6f9fc; border-left: 3px solid #6772e5; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; font-size: 14px; color: #3c4257;">
+  <strong style="color: #6772e5;">Note</strong><br>[content]
 </div>
 ```
 
-### Warning (yellow)
+### Tip (teal — shortcut or best practice)
 ```html
-<div style="background-color: #fff8e1; border-left: 4px solid #f9a825; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-  <strong>Warning:</strong> [content]
+<div style="background-color: #f4fbf8; border-left: 3px solid #09825d; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; font-size: 14px; color: #3c4257;">
+  <strong style="color: #09825d;">Tip</strong><br>[content]
 </div>
 ```
 
-### Tip (green)
+### Warning (amber — may cause unexpected behaviour)
 ```html
-<div style="background-color: #e8f5e9; border-left: 4px solid #2e7d32; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-  <strong>Tip:</strong> [content]
+<div style="background-color: #fcf8ee; border-left: 3px solid #c5850c; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; font-size: 14px; color: #3c4257;">
+  <strong style="color: #c5850c;">Warning</strong><br>[content]
 </div>
 ```
 
-### Danger (red)
+### Danger (red — irreversible or destructive)
 ```html
-<div style="background-color: #ffebee; border-left: 4px solid #c62828; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-  <strong>Danger:</strong> [content]
+<div style="background-color: #fff8f8; border-left: 3px solid #cd3d64; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; font-size: 14px; color: #3c4257;">
+  <strong style="color: #cd3d64;">Danger</strong><br>[content]
 </div>
 ```
 
@@ -211,34 +241,58 @@ Section ID: `15005482487055`
 
 ---
 
-## Diataxis Article Templates
+## Article Templates — Stripe Structure
 
 ### How-to guide
-- Title: "How to [verb] [object]" (e.g. "How to export a publication in the background")
-- Starts with: 1-2 sentence context (when/why you'd do this)
-- Body: numbered steps
-- Ends with: what success looks like
+- **Title:** "How to [verb] [object]" — e.g. "How to view and download a QC report"
+- **Opening:** One sentence stating when or why you'd do this. No "In this article" or "This guide will show you".
+- **Prerequisites** (if any): bullet list of what the user needs before starting
+- **Steps:** Numbered list. One action per step. Bold all UI element names. Use › for navigation paths.
+- **What you'll see / next steps:** One short sentence or a "What's next" link list at the end.
+- No subheadings within the steps unless there are two separate procedures (e.g. "Download the report" and "View the report in the UI" as H3s with their own step lists)
 
 ### Tutorial
-- Title: "Getting started with [feature/concept]"
-- Starts with: what the reader will learn and accomplish
-- Body: guided steps with explanation of why each step matters
-- Ends with: summary of what was learned + next steps
+- **Title:** "Get started with [feature]"
+- **Opening:** What the reader will build or accomplish by the end
+- **Prerequisites:** bullet list
+- **Steps:** Numbered, with one sentence of "why this matters" after each major step
+- **Summary:** What was accomplished + 2-3 "Next steps" links
 
 ### Reference
-- Title: "[Feature/Element] reference" or "About [feature]"
-- Structured factual information: fields, options, behaviours
-- No step-by-step — just descriptions
+- **Title:** "[Feature] reference" or "[Panel/Field] overview"
+- No steps — structured as a definition list or table of fields, options, and behaviours
+- Each field/option: **name** — description of what it does and when to use it
 
-### Explanation
-- Title: "Understanding [concept]" or "About [concept]"
-- Starts with: the concept and why it matters
-- Body: context, background, how it fits into the bigger picture
-- No steps — conceptual only
+### Explanation (conceptual)
+- **Title:** "About [concept]" or "How [feature] works"
+- **Opening:** The concept in plain language — what it is and why it exists
+- **Body:** Context, background, how it fits into the broader product
+- No steps. Use short paragraphs and subheadings to break up sections.
 
 ---
 
-## Screenshot Placeholder Format
+## Screenshot embedding format
+
+When a screenshot has been uploaded via `upload_article_image` and a CDN URL is available, embed it immediately after the step it illustrates using this exact HTML:
+
+```html
+<figure style="margin: 16px 0;">
+  <img src="[CDN URL]" alt="[brief alt text describing the UI state]" style="max-width: 100%; border-radius: 4px; border: 1px solid #e0e0e0;">
+  <figcaption style="font-size: 13px; color: #6b7280; margin-top: 6px;">[Descriptive present-tense caption]</figcaption>
+</figure>
+```
+
+**Caption rules:**
+- Descriptive present tense: "The Origin field showing the download icon and Assembly report button."
+- Describe what is visible on screen — not what the user should do
+- No "Screenshot of…" or "Image showing…" — start with the subject directly
+- Keep captions under 15 words
+
+**Placement:** Always after the step the screenshot illustrates, never before it and never grouped at the end.
+
+## Screenshot placeholder format
+
+When no screenshot has been uploaded yet, insert:
 
 `[SCREENSHOT NEEDED: description of what screen/state to capture]`
 
