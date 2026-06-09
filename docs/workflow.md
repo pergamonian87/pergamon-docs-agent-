@@ -7,245 +7,194 @@ title: Workflow Guide
 
 # Pergamon Docs Agent — Workflow Guide
 
-## Overview
-
-The Pergamon Docs Agent follows a 9-step interactive workflow. It does not act autonomously — it works collaboratively with you in the terminal, pausing at 5 checkpoints for your input and approval. Nothing is published without your explicit sign-off.
+The agent never publishes autonomously. Every workflow pauses at human checkpoints and requires explicit approval before anything goes live on Zendesk.
 
 ---
 
-## The 9-Step Workflow
+## Workflow 1 — Release documentation update
 
-### Step 1 — Fetch Release Notes
-**What happens:** Agent reads the latest release thread from Slack #release channel, or accepts a manual paste if Slack is not configured. After fetching, the agent will prompt you interactively using the terminal — it will not stop automatically.
+Triggered after a product release. Reads the Slack #release thread, identifies impacted articles, drafts updates and release notes, and publishes after approval.
 
-**Input:** Jakub's free-form release post (any format)
-
-**Output:** Structured internal list of:
-- New features
-- Improvements
-- Bug fixes
-
-**Note:** The `pergamon_docs_agent` bot must be a member of the `#release` channel. If not, invite it with `/invite @pergamon_docs_agent` in Slack.
-
----
-
-### Step 2 — Confirm Feature List ⛔ Checkpoint 1
-**What happens:** Agent presents the parsed feature list for your review.
-
-**You:** Confirm the list is complete and accurate, or correct any misinterpretations.
-
-**Example:**
-```
-Agent: I've parsed the following from the release thread:
-
-New Features:
-1. Background export — documents and publications can be exported in background
-2. Downloads panel — new panel to track export progress
-
-Improvements:
-1. Table performance improvements
-
-Fixes:
-1. Login session persistence fix
-
-Is this list correct and complete?
-
-Your response: Yes, correct. Also add: password lock management for user accounts.
+```bash
+python3 main.py                    # fetch latest Slack thread
+python3 main.py --manual           # paste release notes manually
+python3 main.py --version 3.9.0   # target a specific release
 ```
 
----
+### Steps
 
-### Step 3 — Feature Description Q&A ⛔ Checkpoint 2
-**What happens:** For each feature or change, the agent asks you to describe how it works, the steps to use it, and the nature of the update.
+**Step 1 — Fetch release notes**
+Agent reads the latest thread from Slack #release, or accepts a manual paste. Falls back to manual if Slack credentials are not configured.
 
-**You:** Answer in plain language. The agent asks follow-up questions if it needs more detail.
+**Step 2 — Confirm feature list** ⛔ Checkpoint
+Agent presents the parsed feature list. You confirm it's complete and correct, or add/remove items.
 
-**Example:**
-```
-Agent: Can you describe how the background export feature works?
+**Step 3 — Feature description Q&A** ⛔ Checkpoint
+For each feature, the agent asks you to describe how it works. Answer in plain language. Use `/doc` to drop engineering specs or `/img` to drop screenshots at this step.
 
-Your response: Users click Export as usual but now there's a new option
-"Export in background". The export starts and they can keep working.
-Progress shows in the new Downloads panel in the top toolbar.
+**Step 4 — Article discovery** ⛔ Checkpoint
+Agent asks how to find impacted articles. Three options:
+- **Option 1** — Scan all article titles, agent suggests a shortlist
+- **Option 2** — Search within specific sections you name
+- **Option 3** — Provide article IDs or titles directly (fastest)
+- **Option 4** — Skip discovery, create all new articles
 
-Agent: What file formats does the background export support?
+**Step 5 — Article list review** ⛔ Checkpoint
+Agent presents the confirmed shortlist. You add any missed articles or remove any that don't apply.
 
-Your response: All existing formats — PDF, InDesign, Word.
-```
+**Step 6 — Draft + AEO pass** (automatic)
+Agent drafts all updates and new articles. Automatically applies AEO pass to every draft: TL;DR block, FAQ section, schema markup. Calls Synthesia to generate the release highlights video.
 
-**Tip:** Use `/note` at any prompt to inject additional context without submitting your answer:
-```
-Your response: /note this only works for documents over 10 pages
-✓ Note saved
-Your response: Yes, all formats are supported
-```
-
----
-
-### Step 4 — Article Discovery ⛔ Checkpoint 3
-**What happens:** Agent asks how you want to find impacted articles. Three options:
-
-**Option 1 — Scan all titles**
-Agent fetches all 194 article titles (metadata only, cheap) and suggests a shortlist based on the release features. You confirm before any full article is fetched.
-
-**Option 2 — Search by section**
-Agent shows the full section list. You pick which sections to search. Agent only looks within those sections.
-
-**Option 3 — Direct article IDs or titles**
-You provide the article IDs or titles directly. Agent fetches only those. Fastest and cheapest option — use this when you already know which articles are affected.
-
-**Example:**
-```
-How do you want to find impacted articles?
-1. Scan all article titles
-2. Search by section
-3. Provide article IDs or titles directly
-
-Your choice: 3
-
-Enter article titles or IDs: Export a Document, Export a Publication, 15563866700687
-```
-
----
-
-### Step 5 — Article List Review ⛔ (part of Checkpoint 3)
-**What happens:** Agent presents the confirmed article list — articles to update and articles to create new.
-
-**You:** Confirm the list, add any missed articles, or remove any that don't apply.
-
-**Example:**
-```
-Articles to update:
-1. Export a Document (ID: 12415851411215)
-2. Export a Publication (ID: 12088831434383)
-
-Articles to create:
-3. Release Notes - Version 3.8.0 (new)
-
-Is this list complete?
-
-Your response: Also update: Document export and preview issues (14787331383311)
-```
-
----
-
-### Step 5b — Drafting + AEO Pass (automatic)
-**What happens:** Agent drafts all article updates and new articles, then automatically runs an AEO pass on every draft. No user interaction needed at this step.
-
-**AEO pass applies automatically:**
-- TL;DR summary block added at article top
-- FAQ section (3-5 Q&As) appended at article bottom
-- Schema markup (HowTo / FAQPage) injected into HTML
-- Vague headings rewritten as specific questions
-- Pergamon terms defined on first use
-
-**Also at this step:**
-- Agent calls Synthesia API to create the release highlights video
-- Video URL and thumbnail are embedded into the release notes draft
-
----
-
-### Step 6 — Diff Review ⛔ Checkpoint 4
-**What happens:** Agent shows the proposed changes for each article, one at a time. HTML is stripped and displayed as readable text.
-
-**You:** For each article, choose:
-- `approve` — accept the changes as-is
+**Step 7 — Diff review** ⛔ Checkpoint
+Agent shows proposed changes article by article. For each, choose:
+- `approve` — accept as-is
 - `skip` — don't update this article
-- `edit` — describe what you want changed, agent redrafts
+- `edit` — describe what to change, agent redrafts
 
-**Example:**
-```
-UPDATE — Export a Document (ID: 12415851411215)
-Summary: Added section on background export with Downloads panel instructions.
+Use `/img` or `/doc` at any diff step to inject additional context.
 
-TL;DR: This article explains how to export documents in Pergamon...
+**Step 8 — Publish approval** ⛔ Checkpoint
+Agent presents the final publish summary. Type `y` to publish or `n` to cancel.
 
-## How to export a document in the background
-1. Click File → Export
-2. Select your export format
-3. Click Export in background
-...
-
-Review [approve/skip/edit]: edit
-Describe the changes you want: Add a note that background export only works for documents over 10 pages
-```
+**Step 9 — Publish + post-publish refinement**
+Agent publishes all approved articles. After publishing, enters a refinement loop:
+- "Does everything look correct?"
+- "Anything to refine?" — paste text from the article with an instruction (e.g. "make this simpler", "wrap in a warning callout")
+- Agent patches and republishes. Repeat until you type "done".
+- Changelog and llms.txt saved once at the end.
 
 ---
 
-### Step 7 — Publish Approval ⛔ Checkpoint 5
-**What happens:** Agent presents a final summary of everything about to be published and asks for explicit confirmation.
+## Workflow 2 — Slack thread refresh
 
-**You:** Type `y` to publish or `n` to cancel.
+Re-parses a release thread for new comments added since the last run — stakeholder clarifications, corrections, or additions.
 
-**Example:**
+```bash
+python3 main.py --refresh --version 3.9.0
 ```
-Ready to Publish:
-UPDATE  Export a Document
-UPDATE  Export a Publication
-UPDATE  Document export and preview issues
-NEW     Release Notes - Version 3.8.0
 
-Publish all approved articles to Zendesk now? [y/n]: y
-```
+Requires `--version` to be provided. The agent reads `drafts/slack_state.json` to find the last-parsed timestamp and fetches only newer messages. Reports "no new comments" and stops if nothing has changed.
+
+### Steps
+
+1. Agent fetches new comments since last parse
+2. You confirm which articles to update ⛔
+3. Agent drafts targeted updates, presents diffs ⛔
+4. Publish approval ⛔ → publish → changelog updated
 
 ---
 
-### Step 8 — Publish
-**What happens:** Agent publishes all approved articles to Zendesk. Each article is retried up to 3 times if a publish fails. Failed articles are saved locally to `/drafts/`.
+## Workflow 3 — Ticket-driven article creation
 
-```
-→ Publishing article 12415851411215...
-✓ Published: https://support.pergamon-labs.com/hc/en-us/articles/...
+Creates a new help article from a Zendesk support ticket. Reads the ticket, checks for duplicate articles, drafts a compliant article, publishes it, and closes the ticket with an internal note.
 
-→ Publishing article 12088831434383...
-✓ Published: https://support.pergamon-labs.com/hc/en-us/articles/...
+```bash
+python3 main.py --ticket 12345
 ```
+
+### Steps
+
+1. Agent fetches ticket: subject, description, comments, tags
+2. You confirm the parsed request ⛔
+3. Agent scans KB for related articles and flags duplicates ⛔
+4. You confirm article type (Diataxis) + section ⛔
+5. Agent asks targeted gap questions ⛔ — use `/doc` or `/img` here
+6. Agent drafts article, presents diff ⛔
+7. Publish approval ⛔ → publish → ticket closed with internal note linking to article
 
 ---
 
-### Step 9 — Post-Publish Report
-**What happens:** Agent updates `changelog.md` and `llms.txt`, then prints a summary.
+## Workflow 4 — Ad-hoc new article
 
-```
-✓ Changelog updated
-✓ llms.txt updated
+Creates a new help article from scratch with just a title as the starting point. No Slack release and no support ticket required.
 
-Release v3.8.0 complete:
-- Updated: 3 articles
-- Created: 1 article (Release Notes)
-- Video: https://share.synthesia.io/...
+```bash
+python3 main.py --new "How to view and download a QC report"
 ```
+
+### Steps
+
+1. Agent asks for description, audience, and reference materials — drop `/img` or `/doc` here ⛔
+2. Duplicate detection runs silently. Section selected automatically. Agent only interrupts if a near-identical article is found.
+3. Agent drafts the full article immediately — steps written from screenshot content, Diataxis type determined automatically
+4. Diff review ⛔ → publish approval ⛔
+5. Screenshots uploaded to Zendesk CDN, embedded in article with captions
+6. Post-publish refinement loop → changelog + llms.txt saved on "done"
 
 ---
 
-## Additional Run Modes
+## Workflow 5 — Rewrite existing article
 
-### Staleness Check
-Run independently of the release workflow to identify outdated articles:
+Rewrites an existing article to apply current style standards (Stripe docs), embed new screenshots, and republish.
+
+```bash
+python3 main.py --rewrite "How to view and download a QC report"
+python3 main.py --rewrite 16413268283023   # by article ID
+```
+
+### Steps
+
+1. Agent locates the article by ID or title search ⛔ (confirms match before fetching)
+2. You drop screenshots `/img` or docs `/doc` — or skip ⛔
+3. Screenshots uploaded to Zendesk CDN immediately (article ID already known)
+4. Agent rewrites applying Stripe docs style, embeds screenshots after the steps they illustrate
+5. Diff review ⛔ → publish approval ⛔
+6. `update_zendesk_article` saves new HTML → `publish_zendesk_article` makes it live
+7. Post-publish refinement loop → changelog + llms.txt saved on "done"
+
+---
+
+## Maintenance modes
+
+### Staleness audit
 
 ```bash
 python3 main.py --staleness
 python3 main.py --staleness --months 3
 ```
 
-Outputs a table of all articles not updated within the threshold, sorted by age.
+Scans all articles and reports any not updated within the threshold (default: 6 months). Outputs a sorted table — no publishing involved.
 
 ### Rollback
-Restore an article to its previous version:
 
 ```bash
-python3 main.py --rollback 15563866700687
+python3 main.py --rollback 16413268283023
 ```
+
+Fetches rollback information for the specified article ID. Zendesk does not expose historical versions via API — use Zendesk Guide's Article Versions UI for the actual restore, or retrieve a local draft from `/drafts/` if one was saved.
 
 ---
 
-## Tips for Best Results
+## Context injection — at any prompt
 
-| Situation | Recommendation |
+| Command | What it does |
 |---|---|
-| Small release (1-2 features) | Use Option 3 (direct IDs) — fastest, cheapest |
-| Large release (many features) | Use Option 1 (scan titles) — agent helps identify impacted articles |
-| You know the sections affected | Use Option 2 (by section) — good middle ground |
-| Agent misses an article | Add it at Step 5 review — paste the title or ID |
-| Agent draft needs changes | Choose `edit` at Step 6 and describe what to change in plain language |
-| Need to add context mid-workflow | Use `/note` at any prompt |
+| `/img path/to/screen.png` | Screenshot sent to GPT-4o vision. Agent reads UI labels verbatim and uses them for step content. Image uploaded to Zendesk and embedded in the article with a caption. |
+| `/doc path/to/file.md` | Engineering doc (MD, TXT, RST, PDF, DOCX) translated to end-user language. Technical internals are stripped. |
+| `/note your message` | Side note injected into the next agent message. Does not submit your main answer. |
+
+Multiple `/img` and `/doc` commands can appear in one input. Paths with spaces can be backslash-escaped.
+
+---
+
+## Post-publish refinement loop
+
+After every publish (all workflows), the agent enters a refinement loop before saving the changelog:
+
+```
+Agent: The article is live at [URL]. Does everything look correct?
+You:   yes
+
+Agent: Anything to refine? Paste text with an instruction, or type 'done'.
+You:   "Once the AI Assembly completes..." → make this opening sentence shorter
+
+Agent: Done — article updated. Anything else, or type 'done'?
+You:   done
+
+✓ Changelog updated
+✓ llms.txt updated
+```
+
+Supported instructions: "rewrite this", "make this simpler", "wrap in a warning callout", "split this into two steps", "add a note about X".
+
+The changelog and llms.txt are saved only once — after the refinement loop ends.

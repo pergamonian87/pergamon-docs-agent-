@@ -10,7 +10,6 @@ title: Setup Guide
 ## Prerequisites
 
 - **Mac** with Python 3.9+
-- **Claude Code CLI** installed (for development and maintenance)
 - Active accounts with:
   - OpenAI (API access)
   - Zendesk (admin access to pergamonlabshelp)
@@ -21,10 +20,11 @@ title: Setup Guide
 
 ## Installation
 
-### 1. Navigate to the project directory
+### 1. Clone the repository
 
 ```bash
-cd /Users/rakesh/Documents/pergdocsagent
+git clone https://github.com/pergamonian87/pergamon-docs-agent-.git
+cd pergamon-docs-agent-
 ```
 
 ### 2. Install dependencies
@@ -33,20 +33,22 @@ cd /Users/rakesh/Documents/pergdocsagent
 pip3 install -r requirements.txt
 ```
 
-Dependencies installed:
-- `anthropic` — Anthropic SDK (kept for future use)
-- `openai` — OpenAI SDK (active model)
-- `python-dotenv` — loads `.env` credentials
-- `requests` — HTTP calls to Zendesk, Slack, Synthesia
-- `rich` — terminal UI (panels, prompts, tables)
-- `beautifulsoup4` — HTML parsing
-- `html2text` — HTML to readable text conversion
+| Package | Purpose |
+|---|---|
+| `openai` | GPT-4o inference engine |
+| `python-dotenv` | Loads `.env` credentials |
+| `requests` | HTTP calls to Zendesk, Slack, Synthesia |
+| `rich` | Terminal UI — panels, prompts, tables |
+| `beautifulsoup4` | HTML parsing |
+| `html2text` | HTML to readable text for diff display |
+| `pypdf` | Parse PDF files dropped via `/doc` |
+| `python-docx` | Parse DOCX files dropped via `/doc` |
 
 ---
 
 ## Configuration
 
-All credentials live in `.env` in the project root. Never commit this file to git (`.gitignore` is already configured).
+All credentials live in `.env` in the project root. Never commit this file.
 
 ### `.env` file
 
@@ -56,7 +58,6 @@ ZENDESK_EMAIL=rakesh.ghatvisave@pergamon-labs.com
 ZENDESK_API_TOKEN=your_zendesk_token
 
 OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key   # kept for fallback
 
 SYNTHESIA_API_KEY=your_synthesia_key
 
@@ -70,10 +71,9 @@ SLACK_RELEASE_CHANNEL_ID=C089EBK20G0
 |---|---|
 | `ZENDESK_API_TOKEN` | Zendesk Admin → Apps & Integrations → APIs → Zendesk API → Add API token |
 | `OPENAI_API_KEY` | platform.openai.com → API Keys |
-| `ANTHROPIC_API_KEY` | platform.anthropic.com → API Keys |
 | `SYNTHESIA_API_KEY` | Synthesia dashboard → API settings |
 | `SLACK_BOT_TOKEN` | api.slack.com/apps → your app → OAuth & Permissions → Bot Token |
-| `SLACK_RELEASE_CHANNEL_ID` | Slack → #release channel URL → last path segment starting with `C` |
+| `SLACK_RELEASE_CHANNEL_ID` | Slack → right-click #release channel → View channel details → Channel ID |
 
 ---
 
@@ -81,86 +81,83 @@ SLACK_RELEASE_CHANNEL_ID=C089EBK20G0
 
 1. Go to **api.slack.com/apps**
 2. Click **Create New App** → From scratch
-3. Name: `Pergamon Docs Agent`
-4. Select your Pergamon workspace
-5. Go to **OAuth & Permissions** → Bot Token Scopes → add:
-   - `channels:history`
-   - `channels:read`
-6. Click **Install to Workspace**
-7. Copy the **Bot OAuth Token** (`xoxb-...`) into `.env`
-8. Invite the bot to #release channel: `/invite @pergamon_docs_agent`
+3. Name: `Pergamon Docs Agent`, select your Pergamon workspace
+4. Go to **OAuth & Permissions** → Bot Token Scopes → add `channels:history` and `channels:read`
+5. Click **Install to Workspace**
+6. Copy the **Bot OAuth Token** (`xoxb-...`) into `.env`
+7. Invite the bot to #release: `/invite @pergamon_docs_agent`
 
 ---
 
-## Switching AI Models
+## CLI Reference
 
-The agent currently uses **GPT-4o** (OpenAI). To switch back to Claude:
+### Release workflows
 
-1. Open `main.py`
-2. Change the import:
-```python
-# OpenAI (current)
-from openai import OpenAI
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-# Anthropic (original — use main_anthropic.py as reference)
-import anthropic
-client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-```
-3. Change the model in the agent loop:
-```python
-# OpenAI
-model="gpt-4o"
-
-# Anthropic
-model="claude-sonnet-4-6"
-```
-
-The original Anthropic version is backed up as `main_anthropic.py`.
-
----
-
-## Running the Agent
-
-### Full workflow — with Slack
 ```bash
+# Fetch latest release thread from Slack
 python3 main.py
-```
-Fetches the latest release thread from #release channel automatically.
 
-### Manual mode — paste release notes
-```bash
+# Skip Slack — paste release notes manually
 python3 main.py --manual
-```
-Skips Slack. Paste release notes directly into the terminal when prompted.
 
-### Staleness check
+# Target a specific release version
+python3 main.py --version 3.9.0
+
+# Re-parse a thread for new comments since last run
+python3 main.py --refresh --version 3.9.0
+```
+
+### Article creation
+
 ```bash
+# Create a new article from a Zendesk support ticket
+python3 main.py --ticket 12345
+
+# Create a new article ad-hoc
+python3 main.py --new "How to export a publication in the background"
+```
+
+### Article editing
+
+```bash
+# Rewrite an existing article by title
+python3 main.py --rewrite "How to export a publication"
+
+# Rewrite an existing article by Zendesk article ID
+python3 main.py --rewrite 12345678
+```
+
+### Maintenance
+
+```bash
+# Audit articles not updated in 6+ months
 python3 main.py --staleness
-```
-Scans all 194 Zendesk articles and reports any not updated in 6+ months.
 
-```bash
+# Customise staleness threshold
 python3 main.py --staleness --months 3
-```
-Customise the staleness threshold (default: 6 months).
 
-### Rollback an article
-```bash
-python3 main.py --rollback 15563866700687
+# Rollback a specific article
+python3 main.py --rollback 12345678
 ```
-Fetches rollback information for the specified article ID.
 
 ---
 
-## Tip: Injecting Notes Mid-Workflow
+## Context Injection
 
-At any `Your response:` prompt during a run, type `/note` followed by your message to inject additional context to the agent without submitting your main answer:
+At any `Your response:` prompt during a run, you can inject additional context inline:
 
+| Command | What it does |
+|---|---|
+| `/img path/to/screen.png` | Loads screenshot as GPT-4o vision input. Agent analyzes the UI and uses it for step content. Image is uploaded to Zendesk and embedded in the article. |
+| `/doc path/to/doc.md` | Loads an engineering doc (MD, TXT, RST, PDF, DOCX). Agent translates to end-user language — never exposes technical internals. |
+| `/note your message` | Injects a side note into the next agent response without submitting your main answer. |
+
+Multiple `/img` and `/doc` commands can appear in a single input. Backslash-escaped paths (`path\ with\ spaces`) are handled automatically.
+
+**Example:**
 ```
-Your response: /note the downloads panel is in the top toolbar not the sidebar
-✓ Note saved — will be included in next agent response
-Your response: Yes, proceed with the update
+Your response: /img ~/Screenshots/assembly-report.png /doc ~/eng-docs/qc-feature.md
+Analyze these and write the article steps from what you can see.
 ```
 
 ---
@@ -169,22 +166,18 @@ Your response: Yes, proceed with the update
 
 ```
 pergdocsagent/
-├── main.py                  # Main agent — OpenAI version (active)
-├── main_anthropic.py        # Backup — original Anthropic/Claude version
-├── CLAUDE.md                # Persistent memory — product knowledge + style rules
-├── .env                     # API credentials (never commit to git)
-├── .gitignore               # Excludes .env and other sensitive files
-├── changelog.md             # Auto-generated audit trail of all releases
+├── main.py                  # Agent entry point — all workflows
+├── CLAUDE.md                # Persistent memory — product knowledge, Stripe style guide, AEO rules
+├── .env                     # API credentials (never commit)
+├── changelog.md             # Auto-generated audit trail
 ├── llms.txt                 # Auto-generated AI crawler index
 ├── requirements.txt         # Python dependencies
 ├── tools/
-│   ├── zendesk.py           # Zendesk API — read, write, publish, rollback
-│   ├── slack.py             # Slack API — fetch #release channel thread
-│   └── synthesia.py        # Synthesia API — create release highlight videos
-├── drafts/                  # Local backup of failed publish attempts
-├── docs/
-│   ├── architecture.md      # System design and component breakdown (this area)
-│   ├── setup.md             # Installation and configuration guide
-│   └── workflow.md          # 9-step workflow and human checkpoints
-└── architecture.md          # Mermaid diagram (original)
+│   ├── zendesk.py           # Zendesk Help Center + Support API
+│   ├── slack.py             # Slack API + thread state management
+│   └── synthesia.py         # Synthesia video generation
+├── drafts/
+│   ├── slack_state.json     # Last-parsed timestamp per version (enables --refresh)
+│   └── article_*.json       # Local backup of articles that failed to publish
+└── docs/                    # This GitHub Pages site
 ```
