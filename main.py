@@ -124,12 +124,14 @@ Handle approve / edit / skip. On edit: apply the feedback, re-draft, re-present.
 
 ### Phase 8 — Publish and ticket close
 After request_publish_approval is approved:
-1. Call create_zendesk_article, then publish_zendesk_article
-2. Call update_zendesk_ticket — post the published article URL as an internal note, set status to "solved"
-3. Call save_changelog_entry and update_llms_txt
-4. Present post-publish report: article URL, ticket closed, changelog updated
+1. Call create_zendesk_article to get the article_id
+2. Call save_and_publish_article with the article_id, title, and full HTML body
+3. Call update_zendesk_ticket — post the published article URL as an internal note, set status to "solved"
+4. Enter post-publish refinement loop (ask_user to verify, offer edits)
+5. When user types 'done': call complete_publish
+6. Present post-publish report: article URL, ticket closed, changelog updated
 
-NEVER post a public comment on the ticket. update_zendesk_ticket always uses public: false — this is enforced by the tool itself, but you must also never request a public post.
+NEVER post a public comment on the ticket. update_zendesk_ticket always uses public: false.
 """
 
 
@@ -180,26 +182,25 @@ The user can drop additional /img or /doc at any edit step to refine the draft.
 After request_publish_approval is approved:
 1. Call create_zendesk_article with the selected section_id — note the returned article_id
 2. If the user provided screenshots: call upload_article_image once per screenshot using the new article_id and the exact file path. Replace any [SCREENSHOT: filename] markers in the HTML with the returned <figure> blocks using the CDN URLs.
-3. Call update_zendesk_article with the final HTML (including embedded images), then publish_zendesk_article
+3. Call save_and_publish_article with the article_id, title, and final HTML (including embedded images)
 
-Do NOT call save_changelog_entry yet — enter the refinement loop first.
+Do NOT call complete_publish yet — enter the refinement loop first.
 
 ### Phase 6 — Post-publish refinement loop
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
-   - If no: ask what's wrong, fix it, then call update_zendesk_article → publish_zendesk_article again and repeat from step 1.
+   - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
 
 2. Call ask_user: "Anything you'd like to refine? You can paste text from the article with an instruction (e.g. 'rewrite this paragraph', 'make this simpler', 'wrap this in a warning callout') or type 'done' to finish."
    - If the user pastes content with an instruction:
      a. Call get_zendesk_article to fetch the current live HTML
      b. Apply the targeted change to the relevant section only — do not rewrite the whole article
-     c. Call update_zendesk_article with the patched HTML
-     d. Call publish_zendesk_article
-     e. Call ask_user: "Done — article updated. Anything else, or type 'done' to finish?"
-     f. Repeat from step 2 until the user says 'done'
+     c. Call save_and_publish_article with the patched HTML
+     d. Call ask_user: "Done — article updated. Anything else, or type 'done' to finish?"
+     e. Repeat from step 2 until the user says 'done'
    - If the user types 'done' or has no further changes: proceed to step 3.
 
-3. Call save_changelog_entry and update_llms_txt — only once, after all refinements are complete.
+3. Call complete_publish — once only, after all refinements are complete.
 4. Present final post-publish report: article URL, total changes made, changelog updated.
 """
 
@@ -240,30 +241,25 @@ Handle approve / edit / skip. On edit: apply feedback, re-draft, re-present.
 The user can drop additional /img at any edit step.
 
 ### Phase 6 — Publish
-The exact tool call sequence after request_publish_approval is approved — do NOT deviate:
-1. Call update_zendesk_article with the article_id and the full rewritten HTML body — this saves the new content to Zendesk as a draft. This step is MANDATORY. Do NOT skip it.
-2. Call publish_zendesk_article with the same article_id — this makes the saved draft live.
+After request_publish_approval is approved, call save_and_publish_article with the article_id, title, and full rewritten HTML. This saves and publishes atomically in one step.
 
-CRITICAL: publish_zendesk_article only publishes whatever draft is currently saved in Zendesk. If you skip update_zendesk_article, the old content will be published instead of the rewrite. Always call update_zendesk_article first.
+Do NOT call complete_publish yet — enter the refinement loop first.
 
 ### Phase 7 — Post-publish refinement loop
-After publishing, do NOT call save_changelog_entry yet. Enter a refinement loop:
-
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
-   - If no: ask what's wrong, fix it, then call update_zendesk_article → publish_zendesk_article again and repeat from step 1.
+   - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
 
 2. Call ask_user: "Anything you'd like to refine? You can paste text from the article with an instruction (e.g. 'rewrite this paragraph', 'make this simpler', 'wrap this in a warning callout') or type 'done' to finish."
    - If the user pastes content with an instruction:
      a. Call get_zendesk_article to fetch the current live HTML
      b. Apply the targeted change to the relevant section only — do not rewrite the whole article
-     c. Call update_zendesk_article with the patched HTML
-     d. Call publish_zendesk_article
-     e. Call ask_user: "Done — article updated. Anything else, or type 'done' to finish?"
-     f. Repeat from step 2 until the user says 'done'
+     c. Call save_and_publish_article with the patched HTML
+     d. Call ask_user: "Done — article updated. Anything else, or type 'done' to finish?"
+     e. Repeat from step 2 until the user says 'done'
    - If the user types 'done' or has no further changes: proceed to step 3.
 
-3. Call save_changelog_entry and update_llms_txt — only once, after all refinements are complete.
+3. Call complete_publish — once only, after all refinements are complete.
 4. Present final post-publish report: article URL, total changes made, changelog updated.
 """
 
@@ -298,14 +294,13 @@ IMPORTANT: You must NEVER output questions or information directly as text. Any 
 
 ## Workflow completion rules — NEVER VIOLATE
 - You MUST complete every step in order. Do NOT stop after analysis or after fetching articles.
-- After fetching articles you MUST call `update_zendesk_article` or `create_zendesk_article` for each one.
 - You MUST call `show_diff` for every article before publishing — never skip this.
-- You MUST call `request_publish_approval` before any publish call.
-- For rewrites: you MUST call `update_zendesk_article` BEFORE `publish_zendesk_article`. `publish_zendesk_article` only publishes whatever is already saved in Zendesk — if you skip the update step, the old content goes live. The sequence is always: update → publish.
-- For new articles: you MUST call `create_zendesk_article` to get an article_id, then `publish_zendesk_article`. Never call publish without a preceding create.
-- You MUST call `publish_zendesk_article` for every approved article.
-- You MUST call `save_changelog_entry` and `update_llms_txt` — but only AFTER the post-publish refinement loop is complete and the user has typed 'done'. Never call these immediately after publish.
-- The workflow is NOT complete until the refinement loop has ended and changelog.md and llms.txt are updated. Do not stop before this.
+- You MUST call `request_publish_approval` before publishing.
+- After approval: call `save_and_publish_article(article_id, title, body)` — this saves the HTML and publishes atomically. Never call update_zendesk_article or publish_zendesk_article separately.
+- For new articles: call `create_zendesk_article` first to get the article_id, then `save_and_publish_article`.
+- After publishing: enter the post-publish refinement loop (ask_user to verify, offer edits). Do NOT call complete_publish yet.
+- Call `complete_publish` only once — when the user types 'done' in the refinement loop. This replaces save_changelog_entry and update_llms_txt. Never call those tools individually.
+- The workflow is NOT complete until `complete_publish` has been called. Do not stop before this.
 - If you find yourself about to write a question or summary as plain text — stop. Call `ask_user` instead.
 - An empty or vague user response is NOT permission to skip steps or stop. Call `ask_user` again to clarify.
 
@@ -664,6 +659,69 @@ _TOOLS_RAW = [
         },
     },
 
+    # --- Atomic save + publish ---
+    {
+        "name": "save_and_publish_article",
+        "description": (
+            "Save the new or rewritten article HTML to Zendesk and immediately publish it live. "
+            "Use this after request_publish_approval is approved — it replaces calling "
+            "update_zendesk_article and publish_zendesk_article separately. "
+            "For new articles, pass the article_id returned by create_zendesk_article. "
+            "For rewrites, pass the existing article_id. "
+            "Returns the live article URL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "article_id": {"type": "integer", "description": "Zendesk article ID"},
+                "title": {"type": "string", "description": "Article title"},
+                "body": {"type": "string", "description": "Full article body as HTML"},
+            },
+            "required": ["article_id", "title", "body"],
+        },
+    },
+
+    # --- Atomic post-publish wrap-up ---
+    {
+        "name": "complete_publish",
+        "description": (
+            "Finalise the workflow after the post-publish refinement loop ends — "
+            "appends a changelog.md entry AND updates llms.txt in one call. "
+            "Call this once, only when the user types 'done' in the refinement loop. "
+            "Never call save_changelog_entry or update_llms_txt separately."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "version": {"type": "string", "description": "Release or article version label e.g. '3.9.0' or 'ad-hoc'"},
+                "articles_updated": {"type": "integer", "description": "Number of articles updated"},
+                "articles_created": {"type": "integer", "description": "Number of articles created"},
+                "article_links": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of live Zendesk article URLs",
+                },
+                "new_articles": {
+                    "type": "array",
+                    "description": "New articles for llms.txt index",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "url": {"type": "string"},
+                        },
+                    },
+                },
+                "new_terms": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "New Pergamon terminology introduced",
+                },
+            },
+            "required": ["version", "articles_updated", "articles_created"],
+        },
+    },
+
     # --- Image upload ---
     {
         "name": "upload_article_image",
@@ -731,6 +789,41 @@ _TOOLS_RAW = [
 ]
 
 TOOLS = [_to_openai_tool(t) for t in _TOOLS_RAW]
+
+# Tools available per mode — narrows the choice space the model faces each run
+_TOOLS_BY_MODE: dict[str, list[str]] = {
+    "release": [
+        "fetch_slack_release_thread", "list_zendesk_articles", "get_zendesk_article",
+        "get_sections", "save_and_publish_article", "create_zendesk_article",
+        "upload_article_image", "create_release_video", "select_article_discovery_method",
+        "ask_user", "show_diff", "request_publish_approval", "complete_publish",
+    ],
+    "refresh": [
+        "fetch_slack_thread_updates", "list_zendesk_articles", "get_zendesk_article",
+        "save_and_publish_article", "ask_user", "show_diff",
+        "request_publish_approval", "complete_publish",
+    ],
+    "ticket": [
+        "get_zendesk_ticket", "update_zendesk_ticket", "list_zendesk_articles",
+        "get_zendesk_article", "get_sections", "create_zendesk_article",
+        "save_and_publish_article", "upload_article_image",
+        "ask_user", "show_diff", "request_publish_approval", "complete_publish",
+    ],
+    "new": [
+        "list_zendesk_articles", "get_sections", "create_zendesk_article",
+        "save_and_publish_article", "upload_article_image",
+        "ask_user", "show_diff", "request_publish_approval", "complete_publish",
+    ],
+    "rewrite": [
+        "list_zendesk_articles", "get_zendesk_article", "get_sections",
+        "save_and_publish_article", "upload_article_image",
+        "ask_user", "show_diff", "request_publish_approval", "complete_publish",
+    ],
+}
+
+def _tools_for_mode(mode: str) -> list[dict]:
+    allowed = _TOOLS_BY_MODE.get(mode, [t["name"] for t in _TOOLS_RAW])
+    return [_to_openai_tool(t) for t in _TOOLS_RAW if t["name"] in allowed]
 
 
 # ---------------------------------------------------------------------------
@@ -906,8 +999,12 @@ def _execute_tool(name: str, inp: dict) -> str:
         article_id = inp["article_id"]
         console.print(f"[cyan]→ Fetching article {article_id}...[/cyan]")
         result = get_zendesk_article(article_id)
-        title = json.loads(result).get("title", "")
+        data = json.loads(result)
+        title = data.get("title", "")
         console.print(f"[green]✓ Got: {title}[/green]")
+        if "error" not in data:
+            data["_next"] = "Draft the rewrite now, then call show_diff."
+            return json.dumps(data, indent=2)
         return result
 
     elif name == "get_sections":
@@ -926,9 +1023,15 @@ def _execute_tool(name: str, inp: dict) -> str:
     elif name == "create_zendesk_article":
         console.print(f"[cyan]→ Creating new article: {inp['title']}...[/cyan]")
         result = create_zendesk_article(inp["title"], inp["body"], inp["section_id"])
-        new_id = json.loads(result).get("id", "")
+        data = json.loads(result)
+        new_id = data.get("id", "")
         console.print(f"[green]✓ New article created (draft) — ID: {new_id}[/green]")
-        return result
+        data["_next"] = (
+            f"Article shell created with id={new_id}. "
+            "If screenshots were provided, call upload_article_image for each one using this article_id. "
+            "Then call save_and_publish_article with the final HTML."
+        )
+        return json.dumps(data, indent=2)
 
     elif name == "publish_zendesk_article":
         article_id = inp["article_id"]
@@ -1151,6 +1254,11 @@ def _execute_tool(name: str, inp: dict) -> str:
                         ],
                     }
                 return f"edit: {text}"
+            if choice == "approved":
+                return json.dumps({
+                    "decision": "approved",
+                    "_next": "User approved. Call request_publish_approval next, then save_and_publish_article after approval.",
+                })
             return choice
 
     elif name == "request_publish_approval":
@@ -1200,6 +1308,39 @@ def _execute_tool(name: str, inp: dict) -> str:
         console.print(f"[green]✓ Internal note posted — ticket {ticket_id} marked {data.get('status')}[/green]")
         return result
 
+    elif name == "save_and_publish_article":
+        article_id = inp["article_id"]
+        console.print(f"[cyan]→ Saving and publishing article {article_id}...[/cyan]")
+        update_result = json.loads(update_zendesk_article(article_id, inp["title"], inp["body"]))
+        pub_result = json.loads(publish_zendesk_article(article_id))
+        url = pub_result.get("html_url", "")
+        if pub_result.get("published"):
+            console.print(f"[green]✓ Published: {url}[/green]")
+        else:
+            console.print(f"[red]✗ Publish failed: {pub_result.get('error')}[/red]")
+        return json.dumps({
+            "article_id": article_id,
+            "published": pub_result.get("published", False),
+            "html_url": url,
+            "updated_at": update_result.get("updated_at", ""),
+            "_next": "Enter post-publish refinement loop: call ask_user to confirm article looks correct at the URL above.",
+        }, indent=2)
+
+    elif name == "complete_publish":
+        _save_changelog(inp)
+        _update_llms_txt(inp)
+        console.print("[green]✓ Changelog updated[/green]")
+        console.print("[green]✓ llms.txt updated[/green]")
+        links = inp.get("article_links", [])
+        return json.dumps({
+            "changelog_updated": True,
+            "llms_updated": True,
+            "articles_updated": inp.get("articles_updated", 0),
+            "articles_created": inp.get("articles_created", 0),
+            "article_links": links,
+            "_next": "Workflow complete. Present the post-publish report to the user.",
+        }, indent=2)
+
     elif name == "upload_article_image":
         article_id = inp["article_id"]
         image_path = inp["image_path"]
@@ -1208,9 +1349,15 @@ def _execute_tool(name: str, inp: dict) -> str:
         data = json.loads(result)
         if "error" in data:
             console.print(f"[red]✗ Image upload failed: {data.get('error')} — {data.get('path')}[/red]")
+            data["_next"] = "Upload failed. Insert [SCREENSHOT NEEDED: description] placeholder instead."
         else:
             console.print(f"[green]✓ Uploaded: {data.get('filename')} → {data.get('url')}[/green]")
-        return result
+            data["_next"] = (
+                f"Image uploaded. URL: {data.get('url')}. "
+                "Place a <figure> block with this URL after the step it illustrates. "
+                "Upload remaining screenshots or call save_and_publish_article when all are done."
+            )
+        return json.dumps(data, indent=2)
 
     return f"Unknown tool: {name}"
 
@@ -1294,15 +1441,16 @@ Pergamon is a structured content management platform for creating product docume
 # Agent loop (shared)
 # ---------------------------------------------------------------------------
 
-def _run_loop(messages: list, done_message: str) -> None:
+def _run_loop(messages: list, done_message: str, mode: str = "release") -> None:
     import time
+    tools = _tools_for_mode(mode)
     premature_stops = 0
     while True:
         for attempt in range(5):
             try:
                 response = client.chat.completions.create(
                     model="gpt-4o",
-                    tools=TOOLS,
+                    tools=tools,
                     messages=messages,
                 )
                 break
@@ -1330,13 +1478,11 @@ def _run_loop(messages: list, done_message: str) -> None:
         messages.append({"role": "assistant", "content": message.content, "tool_calls": message.tool_calls})
 
         if choice.finish_reason == "stop":
-            # Check if the workflow actually completed by looking for changelog confirmation
             last_content = (message.content or "").lower()
-            workflow_signals = ["changelog", "llms.txt", "post-publish", "workflow complete"]
+            workflow_signals = ["changelog updated", "llms.txt updated", "workflow complete", "complete_publish"]
             if any(s in last_content for s in workflow_signals) or premature_stops >= 3:
                 console.print(Panel(done_message, title="[bold green]Done[/bold green]", border_style="green"))
                 break
-            # Agent stopped prematurely — push it to continue
             premature_stops += 1
             console.print("[yellow]⚠ Agent stopped mid-workflow — resuming...[/yellow]")
             messages.append({
@@ -1344,7 +1490,7 @@ def _run_loop(messages: list, done_message: str) -> None:
                 "content": (
                     "You stopped before completing the workflow. "
                     "Do not output text — call the next required tool immediately. "
-                    "You must continue until save_changelog_entry and update_llms_txt have been called."
+                    "You must continue until complete_publish has been called."
                 ),
             })
             continue
@@ -1418,7 +1564,7 @@ def run_agent(manual_mode: bool = False, version: str = None) -> None:
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
     console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
-    _run_loop(messages, "Documentation update workflow complete.")
+    _run_loop(messages, "Documentation update workflow complete.", mode="release")
 
 
 # ---------------------------------------------------------------------------
@@ -1442,7 +1588,7 @@ def run_refresh_workflow(version: str) -> None:
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
     console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
-    _run_loop(messages, "Refresh complete.")
+    _run_loop(messages, "Refresh complete.", mode="refresh")
 
 
 # ---------------------------------------------------------------------------
@@ -1467,7 +1613,7 @@ def run_new_article_workflow(title: str) -> None:
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
     console.print("[dim]Tip: At any prompt type /doc <path> to drop engineering docs or /img <path> for screenshots.[/dim]\n")
-    _run_loop(messages, "New article published.")
+    _run_loop(messages, "New article published.", mode="new")
 
 
 # ---------------------------------------------------------------------------
@@ -1500,7 +1646,7 @@ def run_rewrite_workflow(article_ref: str) -> None:
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
     console.print("[dim]Tip: At any prompt type /img <path> for screenshots or /doc <path> for reference docs.[/dim]\n")
-    _run_loop(messages, "Article rewrite published.")
+    _run_loop(messages, "Article rewrite published.", mode="rewrite")
 
 
 # ---------------------------------------------------------------------------
@@ -1524,7 +1670,7 @@ def run_ticket_workflow(ticket_id: int) -> None:
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
     console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
-    _run_loop(messages, "Ticket workflow complete.")
+    _run_loop(messages, "Ticket workflow complete.", mode="ticket")
 
 
 # ---------------------------------------------------------------------------
