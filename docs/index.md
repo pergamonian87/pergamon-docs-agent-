@@ -22,6 +22,9 @@ An AI-powered documentation agent that automates Zendesk help center publishing 
 | `python3 main.py --rewrite "Article title"` | Rewrite an existing article (by title or ID) |
 | `python3 main.py --staleness` | Audit articles not updated in 6+ months |
 | `python3 main.py --rollback 12345678` | Rollback a specific article by Zendesk ID |
+| `python3 main.py --audit` | AEO audit — scan all articles for missing TL;DR, FAQ, and schema markup |
+| `python3 main.py --lint "Article title"` | Style lint — review an article against Stripe docs conventions |
+| `python3 main.py --aeo-retrofit` | AEO retrofit — bulk-add TL;DR, FAQ, and schema to articles that need it |
 
 ---
 

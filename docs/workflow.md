@@ -144,6 +144,59 @@ python3 main.py --rewrite 16413268283023   # by article ID
 
 ---
 
+## Quality skills
+
+Three skills run independently of the release workflow. Run them in sequence — audit first, then lint to inspect individual articles, then retrofit to fix them in bulk.
+
+---
+
+### Skill 1 — AEO audit (`--audit`)
+
+```bash
+python3 main.py --audit
+python3 main.py --audit --audit-limit 20
+```
+
+Scans every article (or the most recently updated N) and checks for the three AEO elements: TL;DR block, FAQ section, and JSON-LD schema markup. No LLM — pure string matching. Results are saved to `drafts/audit_results.json` and printed as a table.
+
+**Output columns:** Article ID, title, has TL;DR, has FAQ, has schema, last updated.
+
+The audit output is the input for `--aeo-retrofit` — run audit first so retrofit knows which articles to fix.
+
+---
+
+### Skill 2 — Style lint (`--lint`)
+
+```bash
+python3 main.py --lint "How to export a publication"
+python3 main.py --lint 16413268283023
+```
+
+Agent-based workflow. Fetches the article, checks it against Stripe docs conventions (step structure, callout usage, heading case, bold UI elements, benefit sentences), and presents a prioritised list of issues with suggested rewrites. No automatic publishing — review output only.
+
+---
+
+### Skill 3 — AEO retrofit (`--aeo-retrofit`)
+
+```bash
+python3 main.py --aeo-retrofit
+python3 main.py --aeo-retrofit 16413268283023,16413268283024
+```
+
+Bulk-adds missing AEO elements to articles. Without arguments, reads `drafts/audit_results.json` and processes all flagged articles. With a comma-separated ID list, processes only those articles.
+
+For each article, the agent adds only the missing elements (e.g. if FAQ exists but TL;DR and schema are missing, only those two are added). Human approval required before each publish.
+
+**Recommended sequence:**
+
+```
+1. python3 main.py --audit              # identify gaps
+2. python3 main.py --lint "Article"     # inspect individual articles
+3. python3 main.py --aeo-retrofit       # fix all flagged articles
+```
+
+---
+
 ## Maintenance modes
 
 ### Staleness audit

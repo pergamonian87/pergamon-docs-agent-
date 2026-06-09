@@ -140,6 +140,24 @@ python3 main.py --staleness --months 3
 python3 main.py --rollback 12345678
 ```
 
+### Quality skills
+
+```bash
+# AEO audit — scan all articles, report missing TL;DR / FAQ / schema
+python3 main.py --audit
+
+# Limit audit to the N most recently updated articles
+python3 main.py --audit --audit-limit 20
+
+# Style lint — review a single article against Stripe docs conventions
+python3 main.py --lint "How to export a publication"
+python3 main.py --lint 16413268283023
+
+# AEO retrofit — bulk-add TL;DR, FAQ, and schema to articles flagged by audit
+python3 main.py --aeo-retrofit
+python3 main.py --aeo-retrofit 16413268283023,16413268283024
+```
+
 ---
 
 ## Context Injection

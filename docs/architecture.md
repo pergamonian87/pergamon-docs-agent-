@@ -103,6 +103,9 @@ flowchart TD
 | Rewrite | `python3 main.py --rewrite "Title"` | Rewrite existing article in Stripe docs style |
 | Staleness | `python3 main.py --staleness` | Flag articles not updated in 6+ months |
 | Rollback | `python3 main.py --rollback 12345678` | Rollback article by ID |
+| AEO audit | `python3 main.py --audit` | Scan all articles for missing TL;DR, FAQ, and schema markup |
+| Style lint | `python3 main.py --lint "Title"` | Agent-based Stripe docs style review of a single article |
+| AEO retrofit | `python3 main.py --aeo-retrofit` | Bulk-add AEO elements to articles flagged by audit |
 
 ---
 
@@ -139,6 +142,9 @@ The inference engine. Reads inputs, reasons about what to write, drafts HTML, ma
 | `select_article_discovery_method` | `main.py` | Human checkpoint — user chooses article discovery mode |
 | `save_changelog_entry` | `main.py` | Appends entry to changelog.md |
 | `update_llms_txt` | `main.py` | Regenerates llms.txt after publish |
+| `save_and_publish_article` | `main.py` | Atomic update + publish (replaces separate update/publish calls) |
+| `complete_publish` | `main.py` | Saves changelog and regenerates llms.txt — called once at end of refinement loop |
+| `run_aeo_audit` | `main.py` | Python-native AEO scan — string-match only, no LLM, saves `drafts/audit_results.json` |
 
 ---
 
@@ -152,6 +158,7 @@ The inference engine. Reads inputs, reasons about what to write, drafts HTML, ma
 | `llms.txt` | AI crawler index for GPTBot, ClaudeBot, Perplexity | Agent after refinement loop ends |
 | `drafts/slack_state.json` | Last-parsed thread timestamp per version — enables `--refresh` | Agent after each Slack fetch |
 | `drafts/article_*.json` | Local backup of articles that failed to publish | Agent on publish failure |
+| `drafts/audit_results.json` | AEO audit output — article IDs + which elements are missing | `run_aeo_audit` (`--audit`) |
 
 ---
 
