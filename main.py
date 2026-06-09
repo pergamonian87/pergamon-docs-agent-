@@ -377,7 +377,8 @@ Follow Pergamon's standard format exactly:
 ---
 
 {memory}
-{_REFRESH_WORKFLOW_PROMPT if mode == "refresh" else (_TICKET_WORKFLOW_PROMPT if mode == "ticket" else (_NEW_ARTICLE_WORKFLOW_PROMPT if mode == "new" else (_REWRITE_WORKFLOW_PROMPT if mode == "rewrite" else "")))}
+{_REFRESH_WORKFLOW_PROMPT if mode == "refresh" else (_TICKET_WORKFLOW_PROMPT if mode == "ticket" else (_NEW_ARTICLE_WORKFLOW_PROMPT if mode == "new" else (_REWRITE_WORKFLOW_PROMPT if mode == "rewrite" else (_LINT_WORKFLOW_PROMPT if mode == "lint" else (_AEO_RETROFIT_WORKFLOW_PROMPT if mode == "aeo_retrofit" else "")))))}
+
 """
 
 
@@ -818,6 +819,14 @@ _TOOLS_BY_MODE: dict[str, list[str]] = {
         "list_zendesk_articles", "get_zendesk_article", "get_sections",
         "save_and_publish_article", "upload_article_image",
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
+    ],
+    "lint": [
+        "list_zendesk_articles", "get_zendesk_article", "ask_user",
+    ],
+    "aeo_retrofit": [
+        "list_zendesk_articles", "get_zendesk_article",
+        "save_and_publish_article", "ask_user", "show_diff",
+        "request_publish_approval", "complete_publish",
     ],
 }
 
@@ -1716,6 +1725,235 @@ def run_staleness_check(months: int = 6) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Skill 1 — AEO auditor
+# ---------------------------------------------------------------------------
+
+_AUDIT_RESULTS_PATH = PROJECT_DIR / "drafts" / "audit_results.json"
+
+def run_aeo_audit(limit: int = 0) -> None:
+    console.print(Panel(
+        "Scanning all articles for AEO compliance: TL;DR · FAQ · Schema markup.",
+        title="AEO Audit",
+        border_style="cyan",
+    ))
+    articles = json.loads(list_zendesk_articles())
+    if limit:
+        articles = articles[:limit]
+    total = len(articles)
+    console.print(f"[dim]Checking {total} articles...[/dim]\n")
+
+    results = []
+    for i, a in enumerate(articles, 1):
+        body_raw = get_zendesk_article(a["id"])
+        body_data = json.loads(body_raw)
+        if "error" in body_data:
+            continue
+        body = (body_data.get("body") or "").lower()
+        has_tldr    = "tl;dr" in body or "tldr" in body
+        has_faq     = "frequently asked questions" in body or '"faqpage"' in body
+        has_schema  = "application/ld+json" in body
+        score = sum([has_tldr, has_faq, has_schema])
+        results.append({
+            "id":         a["id"],
+            "title":      a["title"],
+            "html_url":   a.get("html_url", ""),
+            "updated_at": a["updated_at"][:10],
+            "has_tldr":   has_tldr,
+            "has_faq":    has_faq,
+            "has_schema": has_schema,
+            "score":      score,
+        })
+        status = "[green]✓[/green]" if score == 3 else "[yellow]~[/yellow]" if score > 0 else "[red]✗[/red]"
+        console.print(f"  {status} [{i}/{total}] {a['title'][:70]}", highlight=False)
+
+    non_compliant = [r for r in results if r["score"] < 3]
+    fully_compliant = len(results) - len(non_compliant)
+
+    table = Table(title=f"AEO Audit — {len(non_compliant)} articles need attention", border_style="cyan")
+    table.add_column("ID", style="dim")
+    table.add_column("Title")
+    table.add_column("TL;DR", justify="center")
+    table.add_column("FAQ", justify="center")
+    table.add_column("Schema", justify="center")
+    for r in sorted(non_compliant, key=lambda x: x["score"]):
+        table.add_row(
+            str(r["id"]),
+            r["title"],
+            "[green]✓[/green]" if r["has_tldr"]   else "[red]✗[/red]",
+            "[green]✓[/green]" if r["has_faq"]    else "[red]✗[/red]",
+            "[green]✓[/green]" if r["has_schema"] else "[red]✗[/red]",
+        )
+    console.print()
+    console.print(table)
+    console.print(f"\n[green]{fully_compliant}/{len(results)} articles fully compliant.[/green]")
+    console.print(f"[yellow]{len(non_compliant)} articles missing one or more AEO elements.[/yellow]")
+
+    # Save for --aeo-retrofit to pick up
+    _AUDIT_RESULTS_PATH.parent.mkdir(exist_ok=True)
+    _AUDIT_RESULTS_PATH.write_text(json.dumps({
+        "run_at": datetime.now().isoformat(),
+        "total": len(results),
+        "non_compliant": non_compliant,
+    }, indent=2))
+    console.print(f"\n[dim]Results saved to {_AUDIT_RESULTS_PATH} — run --aeo-retrofit to fix.[/dim]")
+
+
+# ---------------------------------------------------------------------------
+# Skill 2 — Style linter
+# ---------------------------------------------------------------------------
+
+_LINT_WORKFLOW_PROMPT = """
+---
+
+## OVERRIDE — Style linter
+
+You are running a style audit on a Pergamon help article. Your job is to identify every violation of the Stripe documentation style rules defined in CLAUDE.md. Do not rewrite the article — only report violations.
+
+### What to check
+
+**Steps:**
+- Are steps one action each? Flag any step containing "and" or "then" that joins two actions.
+- Does every step start with an imperative verb (Click, Select, Enter, Navigate, Toggle)? Flag steps starting with "Find", "Locate", "Go to", "Make sure", or "You can".
+- Are UI element names bold (e.g. **Save**, **Attributes tab**)? Flag any UI element name that appears unformatted.
+- Are navigation paths using › (e.g. **File** › **Export**)? Flag "go to X → Y" or "navigate to X then Y" patterns.
+
+**Structure:**
+- Is there filler preamble? Flag phrases: "Follow the steps below", "In order to", "In this article", "This guide will".
+- Are headings in sentence case? Flag Title Case headings.
+- Is there a TL;DR block at the top? Flag if missing.
+- Is there a FAQ section (min 3 questions) at the bottom? Flag if missing.
+
+**Callouts:**
+- Are callout divs using the correct Stripe HTML (3px border-left, colour codes from the style guide)? Flag any callout using the old heavy-border style.
+
+### Output format
+Call ask_user once to present the audit report. Use this structure:
+
+**[Article title] — Style audit**
+
+✗ **[violation category]:** [specific line or phrase from the article] → [what it should be]
+✓ **[category that passes]**
+
+Score: X/8 checks passed.
+
+List every violation specifically — quote the offending text. Do not be vague.
+Do not suggest fixes — report only. The user will decide what to fix.
+"""
+
+
+def run_lint_workflow(article_ref: str = None) -> None:
+    system_prompt = _load_system_prompt(mode="lint")
+    label = f'"{article_ref}"' if article_ref else "pasted content"
+    console.print(Panel(
+        f"Style linter — {label}",
+        title="Pergamon Docs Agent",
+        border_style="cyan",
+    ))
+    if article_ref and article_ref.strip().isdigit():
+        user_msg = (
+            f"Run a style audit on Zendesk article {article_ref}. "
+            f"Call get_zendesk_article with article_id={article_ref}, then audit the body."
+        )
+    elif article_ref:
+        user_msg = (
+            f'Run a style audit on the article titled "{article_ref}". '
+            "Call list_zendesk_articles to find it, fetch the body, then audit it."
+        )
+    else:
+        user_msg = (
+            "The user wants to lint an article. "
+            "Call ask_user to request the article — they can provide an article ID, "
+            "a title, or paste the HTML directly."
+        )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_msg},
+    ]
+    console.print("\n[bold blue]Agent starting...[/bold blue]\n")
+    _run_loop(messages, "Lint complete.", mode="lint")
+
+
+# ---------------------------------------------------------------------------
+# Skill 3 — Bulk AEO retrofit
+# ---------------------------------------------------------------------------
+
+_AEO_RETROFIT_WORKFLOW_PROMPT = """
+---
+
+## OVERRIDE — Bulk AEO retrofit
+
+You are adding missing AEO elements to a list of existing articles. Do NOT rewrite article body content — only add the three AEO elements that are missing from each article:
+- TL;DR block at the very top (if missing)
+- FAQ section at the bottom with 3–5 natural-language questions (if missing)
+- Schema markup — HowTo or FAQPage JSON-LD (if missing)
+
+Use the AEO HTML formats defined in CLAUDE.md exactly.
+
+### For each article in the provided list
+
+1. Call get_zendesk_article to fetch the current HTML body
+2. Identify which of the three elements are missing (check for "TL;DR", "Frequently asked questions", "application/ld+json")
+3. Draft the missing elements based on the article content — make them accurate and specific, not generic
+4. Insert them in the correct positions:
+   - TL;DR: immediately before the first <h2> or <p> tag
+   - FAQ: after the last content section, before any footer block
+   - Schema: after the FAQ section
+5. Call show_diff with the full updated HTML (is_new_article=False)
+6. After user approves: call save_and_publish_article
+7. Move to the next article
+
+### After all articles are processed
+Enter the post-publish refinement loop, then call complete_publish once when the user types 'done'.
+
+### Rules
+- Never touch the existing article body — only add the missing AEO wrapper elements
+- Never remove existing screenshots, <img> tags, or callout blocks
+- If an article already has all three elements, skip it and report "already compliant"
+- Process one article at a time — do not batch
+"""
+
+
+def run_aeo_retrofit_workflow(article_ids_str: str = None) -> None:
+    system_prompt = _load_system_prompt(mode="aeo_retrofit")
+
+    # Resolve article list: from arg, or from last audit results
+    if article_ids_str:
+        ids = [int(x.strip()) for x in article_ids_str.split(",") if x.strip().isdigit()]
+        source = f"{len(ids)} articles from command line"
+        article_list_msg = f"Article IDs to retrofit: {ids}"
+    elif _AUDIT_RESULTS_PATH.exists():
+        audit = json.loads(_AUDIT_RESULTS_PATH.read_text())
+        non_compliant = audit.get("non_compliant", [])
+        ids = [a["id"] for a in non_compliant]
+        run_at = audit.get("run_at", "unknown")[:10]
+        source = f"{len(ids)} non-compliant articles from audit run on {run_at}"
+        article_list_msg = (
+            f"Audit results from {run_at}: {len(ids)} articles need AEO elements. "
+            f"Article IDs: {ids}. "
+            f"Details: {json.dumps(non_compliant[:5], indent=2)}{'...' if len(non_compliant) > 5 else ''}"
+        )
+    else:
+        source = "no audit results found"
+        article_list_msg = (
+            "No audit results found and no article IDs were provided. "
+            "Call ask_user to request article IDs from the user, "
+            "or tell them to run --audit first."
+        )
+
+    console.print(Panel(
+        f"AEO retrofit — {source}",
+        title="Pergamon Docs Agent",
+        border_style="cyan",
+    ))
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": article_list_msg},
+    ]
+    console.print("\n[bold blue]Agent starting...[/bold blue]\n")
+    _run_loop(messages, "AEO retrofit complete.", mode="aeo_retrofit")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -1730,6 +1968,10 @@ def main() -> None:
     parser.add_argument("--refresh", action="store_true", help="Re-parse a Slack thread for new comments (requires --version)")
     parser.add_argument("--new", type=str, metavar="TITLE", help="Create a new help article ad-hoc e.g. --new \"How to download the AI Assembly QC report\"")
     parser.add_argument("--rewrite", type=str, metavar="ARTICLE", help="Rewrite an existing article by ID or title e.g. --rewrite 12345678 or --rewrite \"How to export a publication\"")
+    parser.add_argument("--audit", action="store_true", help="Scan all articles for AEO compliance (TL;DR, FAQ, schema markup)")
+    parser.add_argument("--audit-limit", type=int, default=0, metavar="N", help="Limit audit to first N articles (default: all)")
+    parser.add_argument("--lint", type=str, nargs="?", const="", metavar="ARTICLE", help="Style-lint an article by ID or title, or omit to paste HTML")
+    parser.add_argument("--aeo-retrofit", type=str, nargs="?", const="", metavar="IDS", help="Add missing AEO elements to articles. Pass comma-separated IDs or omit to use last --audit results")
     args = parser.parse_args()
 
     if args.staleness:
@@ -1751,6 +1993,18 @@ def main() -> None:
 
     if args.rewrite:
         run_rewrite_workflow(args.rewrite)
+        return
+
+    if args.audit:
+        run_aeo_audit(limit=args.audit_limit)
+        return
+
+    if args.lint is not None:
+        run_lint_workflow(args.lint or None)
+        return
+
+    if args.aeo_retrofit is not None:
+        run_aeo_retrofit_workflow(args.aeo_retrofit or None)
         return
 
     if args.refresh:
