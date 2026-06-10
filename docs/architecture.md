@@ -49,6 +49,7 @@ flowchart TD
         ZD_IMG["Zendesk Attachments\nupload screenshots → CDN URL"]:::tool
         ZD_TICKET["Zendesk Support\nread ticket · post internal note"]:::tool
         SYN["Synthesia API\ncreate release video"]:::tool
+        SEARCH["DuckDuckGo Search\npre-draft research (--new · --rewrite)"]:::tool
     end
 
     subgraph CP["  🛑  Human Checkpoints  "]
@@ -78,6 +79,7 @@ flowchart TD
     LOOP --> ZD_IMG --> ZD_OUT
     LOOP --> ZD_TICKET
     LOOP --> SYN --> VIDEO
+    LOOP --> SEARCH
     LOOP <-->|interactive prompts| CP
     STATE <-->|read / write| LOOP
     LOOP -->|after refinement loop| CHANGELOG
@@ -145,6 +147,7 @@ The inference engine. Reads inputs, reasons about what to write, drafts HTML, ma
 | `save_and_publish_article` | `main.py` | Atomic update + publish (replaces separate update/publish calls) |
 | `complete_publish` | `main.py` | Saves changelog and regenerates llms.txt — called once at end of refinement loop |
 | `run_aeo_audit` | `main.py` | Python-native AEO scan — string-match only, no LLM, saves `drafts/audit_results.json` |
+| `web_search` | `main.py` (via `ddgs`) | DuckDuckGo search — pre-draft research in `--new` and `--rewrite` modes. No API key required. |
 
 ---
 

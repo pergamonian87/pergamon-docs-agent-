@@ -43,6 +43,7 @@ pip3 install -r requirements.txt
 | `html2text` | HTML to readable text for diff display |
 | `pypdf` | Parse PDF files dropped via `/doc` |
 | `python-docx` | Parse DOCX files dropped via `/doc` |
+| `ddgs` | DuckDuckGo search — used by `--new` and `--rewrite` for pre-draft research (no API key required) |
 
 ---
 

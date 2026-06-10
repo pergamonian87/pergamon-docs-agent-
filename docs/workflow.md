@@ -32,6 +32,9 @@ Agent presents the parsed feature list. You confirm it's complete and correct, o
 **Step 3 — Feature description Q&A** ⛔ Checkpoint
 For each feature, the agent asks you to describe how it works. Answer in plain language. Use `/doc` to drop engineering specs or `/img` to drop screenshots at this step.
 
+**Step 3b — Web research** (automatic, silent)
+Before asking about article discovery, the agent runs 3–5 web searches to research the topic: how leading documentation sites explain it, industry terminology, and common user questions. Results inform structure, analogies, and FAQs — not copied directly into the article.
+
 **Step 4 — Article discovery** ⛔ Checkpoint
 Agent asks how to find impacted articles. Three options:
 - **Option 1** — Scan all article titles, agent suggests a shortlist
@@ -115,11 +118,12 @@ python3 main.py --new "How to view and download a QC report"
 ### Steps
 
 1. Agent asks for description, audience, and reference materials — drop `/img` or `/doc` here ⛔
-2. Duplicate detection runs silently. Section selected automatically. Agent only interrupts if a near-identical article is found.
-3. Agent drafts the full article immediately — steps written from screenshot content, Diataxis type determined automatically
-4. Diff review ⛔ → publish approval ⛔
-5. Screenshots uploaded to Zendesk CDN, embedded in article with captions
-6. Post-publish refinement loop → changelog + llms.txt saved on "done"
+2. Agent runs 3–5 web searches (silent): how leading docs sites explain the topic, industry terminology, common user questions. This informs structure and FAQs — not copied verbatim.
+3. Duplicate detection runs silently. Section selected automatically. Agent only interrupts if a near-identical article is found.
+4. Agent drafts the full article from scratch — synthesising research, source docs, and screenshots. Source docs are reference material only; no content is copied from them.
+5. Diff review ⛔ → publish approval ⛔
+6. Screenshots uploaded to Zendesk CDN, embedded in article with captions
+7. Post-publish refinement loop → changelog + llms.txt saved on "done"
 
 ---
 
