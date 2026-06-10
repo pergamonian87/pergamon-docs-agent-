@@ -153,32 +153,49 @@ If the user provides screenshots via /img at this step or any later step:
 - Use the screenshots as the primary source of truth for step content, navigation paths, and UI element names
 - Screenshots override the verbal description if there is any conflict on UI labels or element names
 
-If the user provides engineering docs via /doc, translate them to end-user language when drafting.
+If the user provides engineering docs via /doc:
+- Treat them as raw reference material ONLY — extract the key concepts but do NOT copy any text
+- Identify the 5–7 things the end user actually needs to know — strip implementation details, internal identifiers, and developer jargon completely
 
-### Phase 2 — Background checks (silent, no interruptions)
+### Phase 2 — Deep research (silent, no interruptions)
+Before drafting, run targeted web searches to inform the article. Call web_search 3–5 times:
+1. How leading documentation sites (Stripe, OpenAI, Notion, Atlassian, Intercom) explain this topic or a close analogue
+2. The specific terminology and framing conventions used for this topic in the industry
+3. Common user questions and pain points around this topic (to populate the FAQ)
+4. Any additional angle relevant to the article (best practices, gotchas, onboarding patterns)
+
+Use the search results to identify: the clearest structure, the most intuitive analogies, and the questions users actually ask. This research informs — but does not dictate — the article content.
+
+### Phase 3 — Background checks (silent, no interruptions)
 Run these two steps back-to-back without asking the user anything unless a blocker is found:
+1. **Duplicate check** — call list_zendesk_articles and silently scan titles. Only interrupt if a near-identical article exists: call ask_user to flag it and ask whether to update instead of creating new.
+2. **Section selection** — call get_sections. Pick the most appropriate section automatically. Do NOT ask unless nothing fits clearly.
 
-1. **Duplicate check** — call list_zendesk_articles and silently scan titles. Only interrupt the user if a near-identical article is found: call ask_user to flag it and ask whether to update instead of creating new.
-2. **Section selection** — call get_sections. Pick the most appropriate section automatically based on the article topic. Do NOT ask the user to confirm the section unless nothing fits clearly.
+### Phase 4 — Draft creation
+Write the full article HTML now. Do not ask any more questions before drafting.
 
-After both steps complete silently, proceed immediately to drafting.
+**CRITICAL — synthesis rules. Violating these is a failure:**
+- Do NOT copy any sentence, phrase, or structure from the source documents provided via /doc. They are reference material, not a draft.
+- Do NOT reproduce headings or section structure from the source document.
+- Write every sentence from scratch in second-person, active voice, Stripe docs style.
+- The article must read as if written by a professional technical writer — not extracted from an engineering spec.
 
-### Phase 3 — Draft creation
-Using the description, screenshots, and any docs provided, write the full article HTML now. Do not ask any more questions before drafting — use what you have.
-
-- Determine the Diataxis type from the content (how-to, tutorial, reference, or explanation) — do not ask the user
-- Follow all Pergamon style conventions: second person, active voice, sentence case headings, bold UI elements on first use
-- AEO pass: TL;DR block at top, FAQ (3–5 natural-language questions) at bottom, HowTo or FAQPage schema markup
-- For every step that has a matching screenshot, write the step from what is visible in the image — exact button/label names from the UI
-- For steps not covered by screenshots, insert: [SCREENSHOT NEEDED: description of what to capture]
+**Content rules:**
+- Determine the Diataxis type (how-to, tutorial, reference, or explanation) from the content — do not ask
+- Apply the appropriate Stripe docs article template for that type
+- Incorporate findings from web research: structure, analogies, and FAQ questions informed by how leading docs sites handle this topic
+- Bold all UI element names on first use. Use › for navigation paths. One action per step.
+- AEO pass: TL;DR block at top (written in plain language, not copied from source), FAQ (3–5 questions drawn from research), HowTo or FAQPage schema markup
+- For steps with a matching screenshot: write from what is visible — exact labels from the UI
+- For steps without screenshots: insert [SCREENSHOT NEEDED: description]
 
 Present the full draft via show_diff with is_new_article=True.
 
-### Phase 4 — Review loop
+### Phase 5 — Review loop
 Handle approve / edit / skip. On edit: apply feedback, re-draft, re-present. Soft-warn after 3+ revision cycles.
 The user can drop additional /img or /doc at any edit step to refine the draft.
 
-### Phase 5 — Publish
+### Phase 6 — Publish
 After request_publish_approval is approved:
 1. Call create_zendesk_article with the selected section_id — note the returned article_id
 2. If the user provided screenshots: call upload_article_image once per screenshot using the new article_id and the exact file path. Replace any [SCREENSHOT: filename] markers in the HTML with the returned <figure> blocks using the CDN URLs.
@@ -186,7 +203,7 @@ After request_publish_approval is approved:
 
 Do NOT call complete_publish yet — enter the refinement loop first.
 
-### Phase 6 — Post-publish refinement loop
+### Phase 7 — Post-publish refinement loop
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
    - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
@@ -723,6 +740,33 @@ _TOOLS_RAW = [
         },
     },
 
+    # --- Web research ---
+    {
+        "name": "web_search",
+        "description": (
+            "Search the web for information to inform article drafting. "
+            "Use this during the research phase to find how leading documentation sites "
+            "explain a topic, discover industry best practices, and identify common user questions. "
+            "Returns titles, URLs, and snippets from search results. "
+            "Call multiple times with different queries to research different angles. "
+            "Available in --new and --rewrite modes only."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query e.g. 'how OpenAI explains token pricing help documentation'",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Number of results to return (default 5, max 10)",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+
     # --- Image upload ---
     {
         "name": "upload_article_image",
@@ -811,12 +855,12 @@ _TOOLS_BY_MODE: dict[str, list[str]] = {
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
     "new": [
-        "list_zendesk_articles", "get_sections", "create_zendesk_article",
+        "web_search", "list_zendesk_articles", "get_sections", "create_zendesk_article",
         "save_and_publish_article", "upload_article_image",
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
     "rewrite": [
-        "list_zendesk_articles", "get_zendesk_article", "get_sections",
+        "web_search", "list_zendesk_articles", "get_zendesk_article", "get_sections",
         "save_and_publish_article", "upload_article_image",
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
@@ -1349,6 +1393,21 @@ def _execute_tool(name: str, inp: dict) -> str:
             "article_links": links,
             "_next": "Workflow complete. Present the post-publish report to the user.",
         }, indent=2)
+
+    elif name == "web_search":
+        query = inp["query"]
+        max_results = min(int(inp.get("max_results", 5)), 10)
+        console.print(f"[cyan]→ Searching: {query}[/cyan]")
+        try:
+            from ddgs import DDGS
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results))
+            console.print(f"[green]✓ {len(results)} result(s) found[/green]")
+            return json.dumps(results, indent=2)
+        except ImportError:
+            return json.dumps({"error": "ddgs not installed — run: pip install ddgs"})
+        except Exception as e:
+            return json.dumps({"error": str(e)})
 
     elif name == "upload_article_image":
         article_id = inp["article_id"]
