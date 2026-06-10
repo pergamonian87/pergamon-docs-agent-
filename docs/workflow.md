@@ -140,11 +140,12 @@ python3 main.py --rewrite 16413268283023   # by article ID
 
 1. Agent locates the article by ID or title search ⛔ (confirms match before fetching)
 2. You drop screenshots `/img` or docs `/doc` — or skip ⛔
-3. Screenshots uploaded to Zendesk CDN immediately (article ID already known)
-4. Agent rewrites applying Stripe docs style, embeds screenshots after the steps they illustrate
-5. Diff review ⛔ → publish approval ⛔
-6. `update_zendesk_article` saves new HTML → `publish_zendesk_article` makes it live
-7. Post-publish refinement loop → changelog + llms.txt saved on "done"
+3. Agent runs 3–5 web searches (silent): how leading docs sites cover this topic, current best practices, real user questions. Used to identify gaps and outdated sections in the existing article.
+4. Screenshots uploaded to Zendesk CDN immediately (article ID already known)
+5. Agent rewrites — incorporating research findings, applying Stripe docs style, embedding screenshots after the steps they illustrate. Not a restyle: gaps are filled, outdated content is updated, FAQs are improved.
+6. Diff review ⛔ → publish approval ⛔
+7. `save_and_publish_article` saves and publishes atomically
+8. Post-publish refinement loop → changelog + llms.txt saved on "done"
 
 ---
 

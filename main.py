@@ -227,7 +227,7 @@ _REWRITE_WORKFLOW_PROMPT = """
 
 ## OVERRIDE — Rewrite existing article workflow
 
-The user wants to rewrite an existing Zendesk article — applying the current Stripe documentation style, embedding any new screenshots, and republishing it.
+The user wants to rewrite an existing Zendesk article — applying the current Stripe documentation style, incorporating research on current best practices, embedding any new screenshots, and republishing it.
 
 ### Phase 1 — Locate the article
 - If a numeric ID was provided, call get_zendesk_article directly.
@@ -240,11 +240,31 @@ If screenshots are provided via /img:
 - Analyze every screenshot carefully — read all visible UI labels, button names, tab names, and field names exactly as shown
 - Note which UI state each screenshot captures so you can place it correctly in the article
 
-### Phase 3 — Upload screenshots
+If the user provides engineering docs via /doc:
+- Treat them as supplementary reference material — extract new facts or changes, do NOT copy any text
+- Identify what is new or different compared to the existing article
+
+### Phase 3 — Deep research (silent, no interruptions)
+Before rewriting, run 3–5 web searches to inform the updated article:
+1. How leading documentation sites (Stripe, OpenAI, Notion, Atlassian, Intercom) explain this topic or a close analogue — to identify structural gaps and better framing
+2. Current best practices and conventions for this topic — the existing article may be outdated
+3. Common user questions around this topic — to improve or expand the FAQ section
+4. Any specific aspect of the existing article that seems unclear or missing — search for the clearest way to explain it
+
+Use search results to identify: what the existing article is missing, which sections need restructuring, and what questions the FAQ should answer.
+
+### Phase 4 — Upload screenshots
 If the user provided screenshots, call upload_article_image once per screenshot (using the article_id from Phase 1 and the exact image path). Collect all returned CDN URLs before drafting.
 
-### Phase 4 — Rewrite
-Rewrite the full article applying all Pergamon style conventions:
+### Phase 5 — Rewrite
+Rewrite the full article. The existing content is the starting point — improve it substantially, don't just restyle it.
+
+**Content improvements (required, not optional):**
+- Incorporate findings from research: fill gaps identified in Phase 3, restructure sections that leading docs sites handle better, update any information that appears outdated
+- Improve the FAQ: replace generic questions with the real questions users ask, as informed by search results
+- Improve the TL;DR: make it more specific and useful — not a rewording of the title
+
+**Style rules:**
 - Stripe documentation style: one action per step, bold all UI elements, use › for navigation paths, no filler preamble
 - Correct callout HTML (Note, Tip, Warning, Danger) as defined in the style guide
 - AEO pass: TL;DR block at top, FAQ (3–5 natural-language questions) at bottom, schema markup
@@ -252,17 +272,17 @@ Rewrite the full article applying all Pergamon style conventions:
 - For each uploaded screenshot: place a <figure> block immediately after the step it illustrates. Write a descriptive present-tense caption.
 - For steps not covered by screenshots: insert [SCREENSHOT NEEDED: description]
 
-### Phase 5 — Review
+### Phase 6 — Review
 Present the rewritten article via show_diff with is_new_article=False.
 Handle approve / edit / skip. On edit: apply feedback, re-draft, re-present.
 The user can drop additional /img at any edit step.
 
-### Phase 6 — Publish
+### Phase 7 — Publish
 After request_publish_approval is approved, call save_and_publish_article with the article_id, title, and full rewritten HTML. This saves and publishes atomically in one step.
 
 Do NOT call complete_publish yet — enter the refinement loop first.
 
-### Phase 7 — Post-publish refinement loop
+### Phase 8 — Post-publish refinement loop
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
    - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
