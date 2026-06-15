@@ -125,7 +125,7 @@ The inference engine. Reads inputs, reasons about what to write, drafts HTML, ma
 
 | Tool | File | What it does |
 |---|---|---|
-| `fetch_slack_release_thread` | `tools/slack.py` | Reads release thread from #release — by latest, version string, or date |
+| `fetch_slack_release_thread` | `tools/slack.py` | Reads release thread from #release — by latest, semantic version (3.9.0), date (15.06.2026), or any text in the thread title |
 | `fetch_slack_thread_updates` | `tools/slack.py` | Fetches only messages newer than last-parsed timestamp |
 | `list_zendesk_articles` | `tools/zendesk.py` | Fetches all article titles + metadata (no bodies) |
 | `get_zendesk_article` | `tools/zendesk.py` | Fetches full HTML body of a specific article |

@@ -74,21 +74,25 @@ def fetch_slack_release_thread(version: str = None) -> str:
     messages = data.get("messages", [])
 
     import re
+    # Matches: semantic versions (3.9.0), date versions (15.06.2026), or "release" keyword
+    _RELEASE_PATTERN = re.compile(r"\d+\.\d+[\.\d]*|\brelease\b", re.IGNORECASE)
+
     release_msg = None
     for msg in messages:
         text = msg.get("text", "")
         if version:
-            if version in text:
+            # Accept any substring match — handles "3.9.0", "15.06.2026", "Release June 2026", etc.
+            if version.lower() in text.lower():
                 release_msg = msg
                 break
         else:
-            if re.search(r"\d+\.\d+\.\d+", text):
+            if _RELEASE_PATTERN.search(text):
                 release_msg = msg
                 break
 
     if not release_msg:
         not_found = (
-            f"No release thread found for version {version} in the last {limit} messages."
+            f"No release thread found matching '{version}' in the last {limit} messages."
             if version else
             f"No release thread found in the last {limit} messages."
         )

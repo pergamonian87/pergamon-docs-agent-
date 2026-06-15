@@ -16,9 +16,10 @@ The agent never publishes autonomously. Every workflow pauses at human checkpoin
 Triggered after a product release. Reads the Slack #release thread, identifies impacted articles, drafts updates and release notes, and publishes after approval.
 
 ```bash
-python3 main.py                    # fetch latest Slack thread
-python3 main.py --manual           # paste release notes manually
-python3 main.py --version 3.9.0   # target a specific release
+python3 main.py                       # fetch latest Slack thread
+python3 main.py --manual              # paste release notes manually
+python3 main.py --version 3.9.0      # target a release by version number
+python3 main.py --version 15.06.2026 # target a release by date-based thread title
 ```
 
 ### Steps

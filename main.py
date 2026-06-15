@@ -451,7 +451,7 @@ _TOOLS_RAW = [
             "properties": {
                 "version": {
                     "type": "string",
-                    "description": "Specific release version to fetch e.g. '3.7.1'. Omit to fetch the most recent release thread.",
+                    "description": "Release identifier to fetch — semantic version ('3.7.1'), date ('15.06.2026'), or any text that appears in the thread. Omit to fetch the most recent release thread.",
                 },
             },
             "required": [],
@@ -2043,7 +2043,7 @@ def main() -> None:
     parser.add_argument("--months", type=int, default=6, help="Staleness threshold in months (default: 6)")
     parser.add_argument("--rollback", type=int, help="Rollback a specific article by ID")
     parser.add_argument("--ticket", type=int, help="Create an article from a Zendesk support ticket ID")
-    parser.add_argument("--version", type=str, help="Target a specific release version on Slack e.g. 3.7.1")
+    parser.add_argument("--version", type=str, help="Target a specific release thread on Slack — accepts semantic versions (3.7.1), dates (15.06.2026), or any text that appears in the thread title")
     parser.add_argument("--refresh", action="store_true", help="Re-parse a Slack thread for new comments (requires --version)")
     parser.add_argument("--new", type=str, metavar="TITLE", help="Create a new help article ad-hoc e.g. --new \"How to download the AI Assembly QC report\"")
     parser.add_argument("--rewrite", type=str, metavar="ARTICLE", help="Rewrite an existing article by ID or title e.g. --rewrite 12345678 or --rewrite \"How to export a publication\"")
@@ -2088,7 +2088,7 @@ def main() -> None:
 
     if args.refresh:
         if not args.version:
-            console.print("[red]✗ --refresh requires --version. Example: python3 main.py --refresh --version 3.7.1[/red]")
+            console.print("[red]✗ --refresh requires --version. Example: python3 main.py --refresh --version 15.06.2026[/red]")
             return
         run_refresh_workflow(args.version)
         return

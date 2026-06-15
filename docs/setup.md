@@ -101,11 +101,14 @@ python3 main.py
 # Skip Slack — paste release notes manually
 python3 main.py --manual
 
-# Target a specific release version
+# Target a specific release by semantic version
 python3 main.py --version 3.9.0
 
+# Target a specific release by date-based thread title
+python3 main.py --version 15.06.2026
+
 # Re-parse a thread for new comments since last run
-python3 main.py --refresh --version 3.9.0
+python3 main.py --refresh --version 15.06.2026
 ```
 
 ### Article creation
