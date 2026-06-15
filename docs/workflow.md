@@ -122,7 +122,8 @@ python3 main.py --new "How to view and download a QC report"
 2. Agent runs 3–5 web searches (silent): how leading docs sites explain the topic, industry terminology, common user questions. This informs structure and FAQs — not copied verbatim.
 3. Duplicate detection runs silently. Section selected automatically. Agent only interrupts if a near-identical article is found.
 4. Agent drafts the full article from scratch — synthesising research, source docs, and screenshots. Source docs are reference material only; no content is copied from them.
-5. Diff review ⛔ → publish approval ⛔
+5. Claude (claude-opus-4-7) reviews the draft automatically — up to 3 rounds. Each round returns specific issues ([STYLE], [AEO], [TERMINOLOGY], [CONTENT]) for GPT-4o to fix. GPT-4o revises and resubmits until Claude returns "APPROVED" or 3 rounds are exhausted.
+6. Diff review ⛔ → publish approval ⛔
 6. Screenshots uploaded to Zendesk CDN, embedded in article with captions
 7. Post-publish refinement loop → changelog + llms.txt saved on "done"
 
@@ -144,9 +145,10 @@ python3 main.py --rewrite 16413268283023   # by article ID
 3. Agent runs 3–5 web searches (silent): how leading docs sites cover this topic, current best practices, real user questions. Used to identify gaps and outdated sections in the existing article.
 4. Screenshots uploaded to Zendesk CDN immediately (article ID already known)
 5. Agent rewrites — incorporating research findings, applying Stripe docs style, embedding screenshots after the steps they illustrate. Not a restyle: gaps are filled, outdated content is updated, FAQs are improved.
-6. Diff review ⛔ → publish approval ⛔
-7. `save_and_publish_article` saves and publishes atomically
-8. Post-publish refinement loop → changelog + llms.txt saved on "done"
+6. Claude reviews the rewrite automatically — up to 3 rounds of critique and revision before the diff is shown to you.
+7. Diff review ⛔ → publish approval ⛔
+8. `save_and_publish_article` saves and publishes atomically
+9. Post-publish refinement loop → changelog + llms.txt saved on "done"
 
 ---
 

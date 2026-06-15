@@ -60,6 +60,8 @@ ZENDESK_API_TOKEN=your_zendesk_token
 
 OPENAI_API_KEY=your_openai_key
 
+ANTHROPIC_API_KEY=your_anthropic_key
+
 SYNTHESIA_API_KEY=your_synthesia_key
 
 SLACK_BOT_TOKEN=xoxb-your-token
@@ -72,6 +74,7 @@ SLACK_RELEASE_CHANNEL_ID=C089EBK20G0
 |---|---|
 | `ZENDESK_API_TOKEN` | Zendesk Admin → Apps & Integrations → APIs → Zendesk API → Add API token |
 | `OPENAI_API_KEY` | platform.openai.com → API Keys |
+| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys (enables Claude quality review — optional but recommended) |
 | `SYNTHESIA_API_KEY` | Synthesia dashboard → API settings |
 | `SLACK_BOT_TOKEN` | api.slack.com/apps → your app → OAuth & Permissions → Bot Token |
 | `SLACK_RELEASE_CHANNEL_ID` | Slack → right-click #release channel → View channel details → Channel ID |

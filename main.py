@@ -189,13 +189,23 @@ Write the full article HTML now. Do not ask any more questions before drafting.
 - For steps with a matching screenshot: write from what is visible — exact labels from the UI
 - For steps without screenshots: insert [SCREENSHOT NEEDED: description]
 
-Present the full draft via show_diff with is_new_article=True.
+### Phase 5 — Claude quality review (automatic, silent)
+Before showing the draft to the user, run it through Claude for independent quality review:
 
-### Phase 5 — Review loop
+1. Call claude_review with the article title, full HTML, and round=1
+2. If Claude returns issues: revise the article to fix ALL listed issues, then call claude_review with round=2
+3. If Claude returns more issues: revise again and call claude_review with round=3
+4. Stop after round 3 regardless of outcome, or as soon as Claude returns "APPROVED"
+
+Fix every issue Claude raises before moving to the next round. Do not skip or partially fix issues.
+Once approved (or round 3 complete), proceed to show_diff.
+
+### Phase 6 — User diff review
+Present the full draft via show_diff with is_new_article=True.
 Handle approve / edit / skip. On edit: apply feedback, re-draft, re-present. Soft-warn after 3+ revision cycles.
 The user can drop additional /img or /doc at any edit step to refine the draft.
 
-### Phase 6 — Publish
+### Phase 7 — Publish
 After request_publish_approval is approved:
 1. Call create_zendesk_article with the selected section_id — note the returned article_id
 2. If the user provided screenshots: call upload_article_image once per screenshot using the new article_id and the exact file path. Replace any [SCREENSHOT: filename] markers in the HTML with the returned <figure> blocks using the CDN URLs.
@@ -203,7 +213,7 @@ After request_publish_approval is approved:
 
 Do NOT call complete_publish yet — enter the refinement loop first.
 
-### Phase 7 — Post-publish refinement loop
+### Phase 8 — Post-publish refinement loop
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
    - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
@@ -272,17 +282,28 @@ Rewrite the full article. The existing content is the starting point — improve
 - For each uploaded screenshot: place a <figure> block immediately after the step it illustrates. Write a descriptive present-tense caption.
 - For steps not covered by screenshots: insert [SCREENSHOT NEEDED: description]
 
-### Phase 6 — Review
+### Phase 6 — Claude quality review (automatic, silent)
+Before showing the rewrite to the user, run it through Claude for independent quality review:
+
+1. Call claude_review with the article title, full HTML, and round=1
+2. If Claude returns issues: revise to fix ALL listed issues, then call claude_review with round=2
+3. If Claude returns more issues: revise again and call claude_review with round=3
+4. Stop after round 3 regardless of outcome, or as soon as Claude returns "APPROVED"
+
+Fix every issue Claude raises before moving to the next round.
+Once approved (or round 3 complete), proceed to show_diff.
+
+### Phase 7 — User diff review
 Present the rewritten article via show_diff with is_new_article=False.
 Handle approve / edit / skip. On edit: apply feedback, re-draft, re-present.
 The user can drop additional /img at any edit step.
 
-### Phase 7 — Publish
+### Phase 8 — Publish
 After request_publish_approval is approved, call save_and_publish_article with the article_id, title, and full rewritten HTML. This saves and publishes atomically in one step.
 
 Do NOT call complete_publish yet — enter the refinement loop first.
 
-### Phase 8 — Post-publish refinement loop
+### Phase 9 — Post-publish refinement loop
 1. Call ask_user: "The article is live at [URL]. Does everything look correct?"
    - If no: ask what's wrong, fix it, then call save_and_publish_article again with the corrected HTML and repeat from step 1.
    - If yes: continue to step 2.
@@ -760,6 +781,27 @@ _TOOLS_RAW = [
         },
     },
 
+    # --- Claude quality review ---
+    {
+        "name": "claude_review",
+        "description": (
+            "Send the article draft to Claude for independent quality review. "
+            "Claude checks Stripe docs style, AEO completeness, and Pergamon terminology. "
+            "Returns a numbered list of specific issues to fix, or 'APPROVED' if the article meets the bar. "
+            "Call after drafting and after each revision. Maximum 3 rounds. "
+            "Do NOT call show_diff until Claude returns 'APPROVED' or round 3 is exhausted."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Article title"},
+                "html": {"type": "string", "description": "Full article HTML to review"},
+                "round": {"type": "integer", "description": "Review round number: 1, 2, or 3"},
+            },
+            "required": ["title", "html", "round"],
+        },
+    },
+
     # --- Web research ---
     {
         "name": "web_search",
@@ -875,13 +917,13 @@ _TOOLS_BY_MODE: dict[str, list[str]] = {
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
     "new": [
-        "web_search", "list_zendesk_articles", "get_sections", "create_zendesk_article",
-        "save_and_publish_article", "upload_article_image",
+        "claude_review", "web_search", "list_zendesk_articles", "get_sections",
+        "create_zendesk_article", "save_and_publish_article", "upload_article_image",
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
     "rewrite": [
-        "web_search", "list_zendesk_articles", "get_zendesk_article", "get_sections",
-        "save_and_publish_article", "upload_article_image",
+        "claude_review", "web_search", "list_zendesk_articles", "get_zendesk_article",
+        "get_sections", "save_and_publish_article", "upload_article_image",
         "ask_user", "show_diff", "request_publish_approval", "complete_publish",
     ],
     "lint": [
@@ -1413,6 +1455,104 @@ def _execute_tool(name: str, inp: dict) -> str:
             "article_links": links,
             "_next": "Workflow complete. Present the post-publish report to the user.",
         }, indent=2)
+
+    elif name == "claude_review":
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if not anthropic_key:
+            console.print("[yellow]⚠ ANTHROPIC_API_KEY not set — skipping Claude review[/yellow]")
+            return json.dumps({
+                "status": "skipped",
+                "message": "ANTHROPIC_API_KEY not configured. Add it to .env to enable Claude review.",
+                "approved": True,
+            })
+
+        round_num = inp.get("round", 1)
+        title = inp["title"]
+        html = inp["html"]
+        console.print(f"[cyan]→ Claude reviewing draft (round {round_num})...[/cyan]")
+
+        _CLAUDE_REVIEWER_SYSTEM = """You are a senior technical writer conducting a quality review of a Zendesk help article for Pergamon Labs. Your job is to enforce standards precisely and demand high quality.
+
+Review the article against these criteria in priority order:
+
+**1. STRIPE DOCS STYLE (highest priority)**
+- Every numbered step must start with an imperative verb: Click, Select, Enter, Toggle, Open, Navigate, Copy, Paste. Never "Find", "Locate", "Go to", "Make sure", or "You can".
+- One action per step — if a step contains "then", "and then", or describes two actions, it must be split.
+- All UI element names bolded exactly as they appear in the product: **Save**, **Knowledge Library**, **Downloads Panel**
+- Navigation paths use › not > or →: Select **Settings** › **Integrations**
+- No filler preamble before steps: never "Follow the steps below to...", "In this article...", "In order to...", "Please note that..."
+- Sentence case for all headings — never Title Case
+- Active voice, second person ("you") throughout — never "the user" or passive constructions
+
+**2. AEO REQUIREMENTS**
+- TL;DR block must be at the very top — must be a plain-language summary of what the article covers and who it's for. Must NOT be a rewording of the title.
+- FAQ section at the bottom with 3–5 questions phrased exactly as a real user or AI assistant would ask them
+- Each FAQ answer must be self-contained — no "see above", "as mentioned", or cross-references
+- JSON-LD schema markup present (HowTo schema for how-to guides, FAQPage schema for FAQ sections)
+
+**3. PERGAMON TERMINOLOGY**
+Exact terms only — never paraphrase or substitute:
+- Content Artifact (not "content block" or "content unit")
+- ACA Workflow (not "approval workflow" or "review process")
+- Knowledge Library (not "content library" or "knowledge base")
+- Publication (not "document" or "output")
+- Global Content (not "shared content" or "global block")
+- Downloads Panel (not "download panel" or "export panel")
+
+**4. CONTENT QUALITY**
+- Steps must be grounded in what is visible in the UI — no invented UI labels or button names
+- No implementation details, internal identifiers, or developer jargon exposed to end users
+- Benefit sentences present where appropriate: "This allows you to X without Y."
+- Callouts (Note, Tip, Warning, Danger) used sparingly — maximum one per section
+
+OUTPUT RULES:
+- If issues found: return a numbered list of specific problems. Maximum 5 issues per round. Each item must:
+  - Start with a category tag: [STYLE], [AEO], [TERMINOLOGY], or [CONTENT]
+  - Quote the exact text that is wrong
+  - State precisely what it should be instead
+  - No praise, no summaries, no preamble — issues only
+- If the article meets all standards: return exactly the word APPROVED on its own line and nothing else."""
+
+        try:
+            from anthropic import Anthropic
+            claude_client = Anthropic(api_key=anthropic_key)
+            response = claude_client.messages.create(
+                model="claude-opus-4-7",
+                max_tokens=1024,
+                system=_CLAUDE_REVIEWER_SYSTEM,
+                messages=[{
+                    "role": "user",
+                    "content": f"Review this article:\n\nTitle: {title}\n\n{html}",
+                }],
+            )
+            feedback = response.content[0].text.strip()
+            approved = feedback.upper() == "APPROVED"
+
+            if approved:
+                console.print("[bold green]✓ Claude: APPROVED[/bold green]")
+            else:
+                issue_count = len([l for l in feedback.splitlines() if l.strip() and l[0].isdigit()])
+                console.print(f"[yellow]Claude: {issue_count} issue(s) found (round {round_num})[/yellow]")
+                console.print(f"[dim]{feedback}[/dim]")
+
+            return json.dumps({
+                "status": "approved" if approved else "issues_found",
+                "round": round_num,
+                "approved": approved,
+                "feedback": "" if approved else feedback,
+                "_next": (
+                    "Article approved by Claude. Proceed to show_diff."
+                    if approved else
+                    f"Claude found issues (round {round_num}). Revise the article to fix ALL listed issues, "
+                    f"then call claude_review again with round={round_num + 1}."
+                    if round_num < 3 else
+                    "Round 3 complete. Proceed to show_diff with the best version of the article."
+                ),
+            }, indent=2)
+
+        except Exception as e:
+            console.print(f"[yellow]⚠ Claude review error: {e} — continuing without review[/yellow]")
+            return json.dumps({"status": "error", "approved": True, "message": str(e)})
 
     elif name == "web_search":
         query = inp["query"]

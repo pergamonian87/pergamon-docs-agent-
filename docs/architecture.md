@@ -148,6 +148,7 @@ The inference engine. Reads inputs, reasons about what to write, drafts HTML, ma
 | `complete_publish` | `main.py` | Saves changelog and regenerates llms.txt — called once at end of refinement loop |
 | `run_aeo_audit` | `main.py` | Python-native AEO scan — string-match only, no LLM, saves `drafts/audit_results.json` |
 | `web_search` | `main.py` (via `ddgs`) | DuckDuckGo search — pre-draft research in `--new` and `--rewrite` modes. No API key required. |
+| `claude_review` | `main.py` (via Anthropic API) | Sends draft to Claude Opus for independent quality review — up to 3 rounds of critique and revision before user sees the diff. Requires `ANTHROPIC_API_KEY`. |
 
 ---
 
