@@ -1069,20 +1069,56 @@ def _load_docs(paths: list[str]) -> list[dict]:
     return blocks
 
 
+_MODES_TABLE = [
+    ("python3 main.py",                   "Release (default)", "Fetch latest Slack thread → article discovery → publish"),
+    ("python3 main.py --version 3.8.1",   "Release",           "Target a specific Slack thread by version or date"),
+    ("python3 main.py --manual",          "Release",           "Paste release notes manually instead of fetching Slack"),
+    ("python3 main.py --refresh",         "Refresh",           "Re-parse a thread for new comments (requires --version)"),
+    ("python3 main.py --new \"Title\"",   "New article",       "Research + draft a new article from scratch"),
+    ("python3 main.py --rewrite \"Title\"","Rewrite",          "Research + rewrite an existing article"),
+    ("python3 main.py --ticket 12345",    "Ticket",            "Create an article from a Zendesk support ticket"),
+    ("python3 main.py --audit",           "Audit",             "Scan all articles for missing TL;DR, FAQ, schema"),
+    ("python3 main.py --audit-limit 20",  "Audit",             "Limit audit to N most recently updated articles"),
+    ("python3 main.py --lint \"Title\"",  "Lint",              "Stripe docs style review of a single article"),
+    ("python3 main.py --aeo-retrofit",    "AEO retrofit",      "Bulk-add AEO elements to articles flagged by audit"),
+    ("python3 main.py --staleness",       "Staleness",         "Report articles not updated in 6+ months"),
+    ("python3 main.py --rollback ID",     "Rollback",          "Fetch rollback info for a specific article ID"),
+]
+
+
+def _show_modes() -> None:
+    table = Table(title="Pergamon Docs Agent — Modes", border_style="cyan", show_lines=False)
+    table.add_column("Command", style="bold green", no_wrap=True)
+    table.add_column("Mode", style="cyan")
+    table.add_column("What it does")
+    for cmd, mode, desc in _MODES_TABLE:
+        table.add_row(cmd, mode, desc)
+    console.print()
+    console.print(table)
+    console.print()
+    console.print("[dim]At any prompt: /modes · /note <msg> · /img <path> · /doc <path or folder>[/dim]")
+    console.print()
+
+
 def _prompt_with_notes(prompt_text: str = "Your response") -> tuple[str, list]:
     """
     Prompt the user for input.
+    - /modes            — print all CLI modes and re-prompt
     - /note <msg>       — stores a note and re-prompts
     - /img <p1>, <p2>  — loads images as vision content blocks
-    - /doc <p1>, <p2>  — loads engineering docs as text content blocks
+    - /doc <path>       — loads engineering docs (file or directory)
     Returns (text, content_blocks) where blocks may mix images and doc text.
     """
     while True:
         response = Prompt.ask(
             f"\n[bold cyan]{prompt_text}[/bold cyan] "
-            "[dim](or /note <msg> · /img <path> · /doc <path>)[/dim]"
+            "[dim](or /modes · /note <msg> · /img <path> · /doc <path>)[/dim]"
         )
         stripped = response.strip()
+
+        if stripped.lower() == "/modes":
+            _show_modes()
+            continue
 
         if stripped.lower().startswith("/note "):
             note = stripped[6:].strip()
@@ -1845,7 +1881,7 @@ def run_agent(manual_mode: bool = False, version: str = None) -> None:
         {"role": "user", "content": user_msg},
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
-    console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
+    console.print("[dim]Tip: At any prompt type /modes to see all modes, /doc <path> for docs, /img <path> for screenshots.[/dim]\n")
     _run_loop(messages, "Documentation update workflow complete.", mode="release")
 
 
@@ -1869,7 +1905,7 @@ def run_refresh_workflow(version: str) -> None:
         {"role": "user", "content": user_msg},
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
-    console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
+    console.print("[dim]Tip: At any prompt type /modes to see all modes, /doc <path> for docs, /img <path> for screenshots.[/dim]\n")
     _run_loop(messages, "Refresh complete.", mode="refresh")
 
 
@@ -1894,7 +1930,7 @@ def run_new_article_workflow(title: str) -> None:
         {"role": "user", "content": user_msg},
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
-    console.print("[dim]Tip: At any prompt type /doc <path> to drop engineering docs or /img <path> for screenshots.[/dim]\n")
+    console.print("[dim]Tip: At any prompt type /modes to see all modes, /doc <path or folder> for docs, /img <path> for screenshots.[/dim]\n")
     _run_loop(messages, "New article published.", mode="new")
 
 
@@ -1927,7 +1963,7 @@ def run_rewrite_workflow(article_ref: str) -> None:
         {"role": "user", "content": user_msg},
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
-    console.print("[dim]Tip: At any prompt type /img <path> for screenshots or /doc <path> for reference docs.[/dim]\n")
+    console.print("[dim]Tip: At any prompt type /modes to see all modes, /doc <path or folder> for docs, /img <path> for screenshots.[/dim]\n")
     _run_loop(messages, "Article rewrite published.", mode="rewrite")
 
 
@@ -1951,7 +1987,7 @@ def run_ticket_workflow(ticket_id: int) -> None:
         {"role": "user", "content": user_msg},
     ]
     console.print("\n[bold blue]Agent starting...[/bold blue]")
-    console.print("[dim]Tip: At any prompt type /note <message> to inject context to the agent.[/dim]\n")
+    console.print("[dim]Tip: At any prompt type /modes to see all modes, /doc <path> for docs, /img <path> for screenshots.[/dim]\n")
     _run_loop(messages, "Ticket workflow complete.", mode="ticket")
 
 
