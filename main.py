@@ -992,10 +992,30 @@ def _load_images(paths: list[str]) -> list[dict]:
     return blocks
 
 
+_DOC_EXTENSIONS = {".md", ".txt", ".rst", ".pdf", ".docx"}
+
+
+def _expand_doc_paths(paths: list[str]) -> list[str]:
+    """Expand any directory paths to the individual doc files inside them."""
+    expanded = []
+    for raw in paths:
+        p = Path(raw.strip().replace("\\ ", " "))
+        if p.is_dir():
+            files = sorted(f for f in p.iterdir() if f.suffix.lower() in _DOC_EXTENSIONS)
+            if files:
+                console.print(f"[cyan]→ Directory: loading {len(files)} file(s) from {p.name}/[/cyan]")
+                expanded.extend(str(f) for f in files)
+            else:
+                console.print(f"[yellow]⚠ No supported doc files found in {p}[/yellow]")
+        else:
+            expanded.append(raw)
+    return expanded
+
+
 def _load_docs(paths: list[str]) -> list[dict]:
     """Read engineering doc files and return as text content blocks."""
     blocks = []
-    for raw in paths:
+    for raw in _expand_doc_paths(paths):
         path = raw.strip().replace("\\ ", " ")  # unescape shell-style spaces
         try:
             ext = Path(path).suffix.lower()
