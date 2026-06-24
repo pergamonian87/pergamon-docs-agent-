@@ -173,15 +173,21 @@ At any `Your response:` prompt during a run, you can inject additional context i
 
 | Command | What it does |
 |---|---|
+| `/modes` | Print all CLI modes and commands at a glance. Re-prompts after — workflow continues uninterrupted. |
 | `/img path/to/screen.png` | Loads screenshot as GPT-4o vision input. Agent analyzes the UI and uses it for step content. Image is uploaded to Zendesk and embedded in the article. |
-| `/doc path/to/doc.md` | Loads an engineering doc (MD, TXT, RST, PDF, DOCX). Agent translates to end-user language — never exposes technical internals. |
+| `/doc path/to/doc.md` | Loads an engineering doc (MD, TXT, RST, PDF, DOCX). Agent extracts end-user-facing content only — strips component names, TypeScript interfaces, internal APIs, and framework details. |
+| `/doc path/to/folder/` | Loads all supported doc files from a directory. Files are sorted alphabetically and processed as a batch. |
 | `/note your message` | Injects a side note into the next agent response without submitting your main answer. |
 
 Multiple `/img` and `/doc` commands can appear in a single input. Backslash-escaped paths (`path\ with\ spaces`) are handled automatically.
 
-**Example:**
+**Examples:**
 ```
+# Single file
 Your response: /img ~/Screenshots/assembly-report.png /doc ~/eng-docs/qc-feature.md
+
+# Whole folder of engineering docs
+Your response: /doc ~/eng-docs/callout-editor/
 Analyze these and write the article steps from what you can see.
 ```
 

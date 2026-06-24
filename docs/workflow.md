@@ -230,8 +230,10 @@ Fetches rollback information for the specified article ID. Zendesk does not expo
 
 | Command | What it does |
 |---|---|
+| `/modes` | Print all CLI modes at a glance. Workflow continues uninterrupted after. |
 | `/img path/to/screen.png` | Screenshot sent to GPT-4o vision. Agent reads UI labels verbatim and uses them for step content. Image uploaded to Zendesk and embedded in the article with a caption. |
-| `/doc path/to/file.md` | Engineering doc (MD, TXT, RST, PDF, DOCX) translated to end-user language. Technical internals are stripped. |
+| `/doc path/to/file.md` | Engineering doc (MD, TXT, RST, PDF, DOCX). Agent extracts end-user content only — strips component names, TypeScript interfaces, internal APIs, rendering pipeline details, and framework internals. |
+| `/doc path/to/folder/` | Loads all supported doc files from a directory as a batch. Useful for dropping a full engineering spec folder at once. |
 | `/note your message` | Side note injected into the next agent message. Does not submit your main answer. |
 
 Multiple `/img` and `/doc` commands can appear in one input. Paths with spaces can be backslash-escaped.

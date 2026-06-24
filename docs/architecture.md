@@ -187,8 +187,10 @@ At any checkpoint, the user can inject grounded context:
 
 | Command | What happens |
 |---|---|
+| `/modes` | Prints all CLI modes and commands in a Rich table. Re-prompts — workflow continues uninterrupted. |
 | `/img path` | Image loaded as GPT-4o vision content block. Agent reads UI labels verbatim, derives steps from visible elements. Image uploaded to Zendesk CDN and embedded in article HTML as `<figure>` with descriptive caption. |
-| `/doc path` | Engineering doc (MD, TXT, RST, PDF, DOCX) loaded as text. Agent translates to end-user language — implementation details stripped before drafting. |
+| `/doc path` | Engineering doc (MD, TXT, RST, PDF, DOCX) loaded with an explicit extraction brief: strips component names, TypeScript interfaces, internal APIs, rendering pipeline, CSS tokens, and framework internals. Keeps user actions, keyboard shortcuts, UI element names, and feature capabilities. |
+| `/doc folder/` | All supported doc files in a directory loaded as a batch, sorted alphabetically. |
 | `/note message` | Side note injected into next agent message without submitting the main answer. |
 
 ---
