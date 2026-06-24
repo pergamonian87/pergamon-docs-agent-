@@ -386,12 +386,36 @@ When the user provides screenshots AND you have an article_id (either from fetch
 6. If upload_article_image fails (file not found), insert [SCREENSHOT NEEDED: description] at that position instead
 
 ## Engineering doc context — when provided via /doc
-If the user drops engineering docs via /doc during a prompt, they will appear as text blocks labelled [ENGINEERING DOC]. When you receive these:
-- Read and understand the feature from a technical perspective first
-- Then translate to end-user language: strip implementation details, API internals, backend architecture, code references
-- Write as if explaining to a non-technical user who just wants to use the feature
-- Use the engineering doc as ground truth for accuracy, but never expose its technical depth in the help article
-- Cross-check any Slack release notes against the engineering doc — the doc takes precedence on accuracy
+If the user drops engineering docs via /doc during a prompt, they will appear as text blocks labelled [ENGINEERING DOC — EXTRACTION REQUIRED]. When you receive these:
+
+**STRIP completely — never reference in the article:**
+- Component names, class names, framework terminology (Angular, React, PascalCase components, kebab-case selectors, decorators like @HostListener, lifecycle hooks like ngOnChanges, ngAfterViewInit)
+- TypeScript interfaces, type definitions, state schemas, JSON formats, version numbers, schema migration notes
+- Internal rendering logic, canvas APIs, draw methods, offscreen rendering, toBlob(), crossOrigin details
+- CSS custom properties, design tokens, internal colour constants (e.g. --md-sys-color-tertiary)
+- Internal identifiers, camelCase property names (e.g. multiDragStarts, selectedIds, pendingImageUrl, IMPALAID)
+- Hit testing algorithms, pixel tolerances, coordinate system internals, artboard coordinate maths
+- EventEmitters, API inputs/outputs, parent/child component relationships, dependency injection
+- Browser API internals (FontFace API, link tag injection, canvas context setup)
+
+**KEEP and translate to user-facing language:**
+- What the user can DO — actions, tasks, workflows
+- Visual behaviours the user sees (cursor changes, panel switching, selection indicators)
+- Keyboard shortcuts — keep these verbatim, they are user-facing
+- Feature capabilities stated in user terms (undo history depth, zoom range, annotation types available)
+- UI element names exactly as they appear in the product — these become **bolded** in the article
+- Constraint behaviours the user experiences (minimum sizes, auto-increment, Shift to constrain)
+- Save and export behaviour from the user's perspective (what clicking Save does, what file is produced)
+
+**TRANSLATE these engineering patterns:**
+- "Component receives X input" → "When you open X..." or "X loads automatically when..."
+- "The component emits Y event" → "Pergamon saves Y to..." or "Your changes are saved as..."
+- "State is restored by restoreState()" → "Your previous annotations reload automatically when you reopen..."
+- camelCase property names → the visible UI label for that property (check the doc for what appears in the UI)
+- "Returns a PNG blob" → "Exports a full-resolution PNG"
+- "Deep-clones annotations" → invisible implementation detail, omit entirely
+
+Use the engineering doc as the source of truth for accuracy and completeness, but never expose its technical depth in the help article. Cross-check Slack release notes against engineering docs — the engineering doc takes precedence on accuracy.
 
 ## Article discovery rules — STRICT, DO NOT OVERRIDE
 - NEVER fetch full article bodies for all 194 articles — this wastes tokens
@@ -1004,7 +1028,17 @@ def _load_docs(paths: list[str]) -> list[dict]:
             blocks.append({
                 "type": "text",
                 "text": (
-                    f"[ENGINEERING DOC — translate for end users, strip implementation details]\n\n"
+                    f"[ENGINEERING DOC — EXTRACTION REQUIRED]\n\n"
+                    f"You are a technical writer reading raw engineering source material. "
+                    f"Extract ONLY what an end user needs to know to use the feature. "
+                    f"Strip all of the following without exception: component names, class names, "
+                    f"TypeScript interfaces, JSON schemas, Angular/React framework details, "
+                    f"internal property names (camelCase), rendering pipeline internals, "
+                    f"canvas/browser API details, CSS custom properties, EventEmitters, "
+                    f"state schema versions, hit testing maths, and coordinate system internals. "
+                    f"Keep: user actions, keyboard shortcuts, visible UI element names, "
+                    f"feature capabilities in plain language, save/export behaviour as the user experiences it. "
+                    f"If a concept has no end-user equivalent, omit it entirely — do not paraphrase it technically.\n\n"
                     f"--- {Path(path).name} ---\n\n{content}\n\n"
                     f"--- End of {Path(path).name} ---"
                 ),
